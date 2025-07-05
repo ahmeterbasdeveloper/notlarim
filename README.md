@@ -1,0 +1,2 @@
+# notlarim
+notlarim
