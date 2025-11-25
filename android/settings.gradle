@@ -1,0 +1,44 @@
+pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        file("local.properties").withInputStream { properties.load(it) }
+        def flutterSdkPath = properties.getProperty("flutter.sdk")
+        assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+        return flutterSdkPath
+    }()
+
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    id "com.android.application" version "8.7.3" apply false   // ✅ güncellendi
+    id "org.jetbrains.kotlin.android" version "2.2.20" apply false // ✅ güncellendi
+}
+
+def os = System.getProperty("os.name").toLowerCase()
+def javaHomePath
+
+if (os.contains("win")) {
+    javaHomePath = "C:/Program Files/Java/jdk-21"
+} else if (os.contains("mac")) {
+    javaHomePath = "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home"
+} else {
+    println("Unknown OS: ${os}. Defaulting to system JDK.")
+    javaHomePath = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
+}
+
+if (new File(javaHomePath).exists()) {
+    System.setProperty("org.gradle.java.home", javaHomePath)
+    println("Using Java Home: ${javaHomePath}")
+} else {
+    println("Warning: JDK not found at ${javaHomePath}. Please check the path.")
+}
+
+include ":app"

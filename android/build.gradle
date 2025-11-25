@@ -1,0 +1,50 @@
+buildscript {
+    ext {
+        // 🔧 Kotlin versiyonu: Gradle 8.7 ile tamamen uyumlu
+        kotlin_version = '2.2.20'
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        // 🔧 Android Gradle Plugin (AGP)
+        classpath "com.android.tools.build:gradle:8.7.3"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    // 🔧 Java 21 uyumluluğu
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+               // ⚙️ Bu satır uyarıyı bastırır
+        options.compilerArgs << "-Xlint:-options"
+    }
+}
+
+rootProject.buildDir = "../build"
+
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    project.evaluationDependsOn(":app")
+
+    // 🔧 Kotlin incremental derlemeyi kapatıyoruz (Java 21 ile uyumlu)
+    project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions {
+            incremental = false
+        }
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
