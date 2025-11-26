@@ -2,20 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../../../../localization/localization.dart';
 
-// Core utilities
+// Core
 import '../../../../core/utils/color_helper.dart';
 
-// Domain katmanı
+// Domain
 import '../../../../domain/entities/durum.dart';
 import '../../../../domain/usecases/durum/create_durum.dart';
 import '../../../../domain/usecases/durum/update_durum.dart';
 
-// Data katmanı (dependency injection basitleştirilmiş)
-import '../../../data/repositories/durum_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
+// DI
+import '../../../../core/di/injection_container.dart';
 
-/// 🧩 Durum ekleme ve güncelleme ekranı.
-/// Clean Architecture + Çoklu Dil Desteği (AppLocalizations)
 class AddEditDurum extends StatefulWidget {
   final Durum? durum;
 
@@ -33,16 +30,13 @@ class _AddEditDurumState extends State<AddEditDurum> {
   late String renkKodu;
   late Color selectedColor;
 
-  late final CreateDurum _createDurumUseCase;
-  late final UpdateDurum _updateDurumUseCase;
+  // ✅ UseCase'leri DI'dan çekiyoruz
+  final CreateDurum _createDurumUseCase = sl<CreateDurum>();
+  final UpdateDurum _updateDurumUseCase = sl<UpdateDurum>();
 
   @override
   void initState() {
     super.initState();
-
-    final repository = DurumRepositoryImpl(DatabaseHelper.instance);
-    _createDurumUseCase = CreateDurum(repository);
-    _updateDurumUseCase = UpdateDurum(repository);
 
     baslik = widget.durum?.baslik ?? '';
     aciklama = widget.durum?.aciklama ?? '';
@@ -62,7 +56,8 @@ class _AddEditDurumState extends State<AddEditDurum> {
         title: Text(
           '${local.translate('general_situation')} '
           '${isEditing ? local.translate('general_update') : local.translate('general_add')}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.amber),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 20, color: Colors.amber),
         ),
         backgroundColor: Colors.green.shade900,
         leading: IconButton(
@@ -100,121 +95,9 @@ class _AddEditDurumState extends State<AddEditDurum> {
     );
   }
 
-  /// Başlık alanı
-  Widget _buildBaslikField(BuildContext context) {
-    final local = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          local.translate('general_title'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          initialValue: baslik,
-          maxLines: 1,
-          style: const TextStyle(color: Colors.black, fontSize: 16),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            hintText: local.translate('general_titleWarningMessage'),
-            hintStyle: const TextStyle(color: Colors.grey),
-          ),
-          validator: (v) => v == null || v.isEmpty
-              ? local.translate('general_fillBlankFieldsMessage')
-              : null,
-          onChanged: (v) => setState(() => baslik = v),
-        ),
-      ],
-    );
-  }
+  // ... (Geri kalan _build... metodları aynı kalabilir, değişiklik yok)
+  // Yer kazanmak için tekrarlamıyorum, sadece _saveDurum güncellenmeli:
 
-  /// Açıklama alanı
-  Widget _buildAciklamaField(BuildContext context) {
-    final local = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          local.translate('general_explanation'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          initialValue: aciklama,
-          maxLines: 3,
-          style: const TextStyle(color: Colors.black, fontSize: 16),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            hintText: local.translate('general_explanationWarningMessage'),
-            hintStyle: const TextStyle(color: Colors.grey),
-          ),
-          validator: (v) => v == null || v.isEmpty
-              ? local.translate('general_fillBlankFieldsMessage')
-              : null,
-          onChanged: (v) => setState(() => aciklama = v),
-        ),
-      ],
-    );
-  }
-
-  /// Renk seçici alanı
-  Widget _buildRenkSecici(BuildContext context) {
-    final local = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              local.translate('general_colorCode'),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
-            ),
-            ElevatedButton(
-              onPressed: () => _showColorPickerDialog(context),
-              child: Text(local.translate('general_chooseColorMessage')),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          maxLines: 1,
-          controller: TextEditingController(text: renkKodu),
-          enabled: false,
-          style: const TextStyle(color: Colors.black, fontSize: 16),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            hintText: local.translate('general_colorCode'),
-            hintStyle: const TextStyle(color: Colors.grey),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Kaydet / Güncelle butonu
-  Widget _buildKaydetButton(BuildContext context, bool isEditing) {
-    final local = AppLocalizations.of(context);
-    final isFormValid = baslik.isNotEmpty && aciklama.isNotEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isFormValid ? Colors.indigo.shade600 : Colors.blueGrey.shade700,
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        ),
-        onPressed: _saveDurum,
-        child: Text(
-          local.translate('general_save'),
-          style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  /// Durumu kaydet veya güncelle
   Future<void> _saveDurum() async {
     final local = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate()) return;
@@ -243,7 +126,125 @@ class _AddEditDurumState extends State<AddEditDurum> {
     }
   }
 
-  /// Renk seçici dialog
+  // ... (Diğer yardımcı metodlar: _buildBaslikField, _showColorPickerDialog vb. aynı)
+
+  Widget _buildBaslikField(BuildContext context) {
+    final local = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          local.translate('general_title'),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          initialValue: baslik,
+          maxLines: 1,
+          style: const TextStyle(color: Colors.black, fontSize: 16),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            hintText: local.translate('general_titleWarningMessage'),
+            hintStyle: const TextStyle(color: Colors.grey),
+          ),
+          validator: (v) => v == null || v.isEmpty
+              ? local.translate('general_fillBlankFieldsMessage')
+              : null,
+          onChanged: (v) => setState(() => baslik = v),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAciklamaField(BuildContext context) {
+    final local = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          local.translate('general_explanation'),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          initialValue: aciklama,
+          maxLines: 3,
+          style: const TextStyle(color: Colors.black, fontSize: 16),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            hintText: local.translate('general_explanationWarningMessage'),
+            hintStyle: const TextStyle(color: Colors.grey),
+          ),
+          validator: (v) => v == null || v.isEmpty
+              ? local.translate('general_fillBlankFieldsMessage')
+              : null,
+          onChanged: (v) => setState(() => aciklama = v),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRenkSecici(BuildContext context) {
+    final local = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              local.translate('general_colorCode'),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.black),
+            ),
+            ElevatedButton(
+              onPressed: () => _showColorPickerDialog(context),
+              child: Text(local.translate('general_chooseColorMessage')),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          maxLines: 1,
+          controller: TextEditingController(text: renkKodu),
+          enabled: false,
+          style: const TextStyle(color: Colors.black, fontSize: 16),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            hintText: local.translate('general_colorCode'),
+            hintStyle: const TextStyle(color: Colors.grey),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKaydetButton(BuildContext context, bool isEditing) {
+    final local = AppLocalizations.of(context);
+    final isFormValid = baslik.isNotEmpty && aciklama.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              isFormValid ? Colors.indigo.shade600 : Colors.blueGrey.shade700,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        ),
+        onPressed: _saveDurum,
+        child: Text(
+          local.translate('general_save'),
+          style: const TextStyle(
+              fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
   void _showColorPickerDialog(BuildContext context) {
     final local = AppLocalizations.of(context);
     showDialog(
@@ -271,7 +272,6 @@ class _AddEditDurumState extends State<AddEditDurum> {
     );
   }
 
-  /// Snackbar bildirimi
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

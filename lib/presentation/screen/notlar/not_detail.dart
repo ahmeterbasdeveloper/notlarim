@@ -3,26 +3,20 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/utils/color_helper.dart';
 import '../../../../localization/localization.dart';
 
-// 🧠 Domain
+// 🧠 Domain Entities
 import '../../../domain/entities/not.dart';
+
+// 🧠 Domain UseCases
 import '../../../domain/usecases/not/get_not_by_id.dart';
 import '../../../domain/usecases/oncelik/get_oncelik_by_id.dart';
 import '../../../domain/usecases/not/delete_not.dart';
-import '../../../domain/usecases/not/create_not.dart';
-import '../../../domain/usecases/not/update_not.dart';
-import '../../../domain/usecases/kategori/get_all_kategori.dart';
-import '../../../domain/usecases/oncelik/get_all_oncelik.dart';
 
-// 💾 Data
-import '../../../data/repositories/not_repository_impl.dart';
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/repositories/oncelik_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
+// DI
+import '../../../../core/di/injection_container.dart';
 
 // 📄 UI
 import 'not_add_edit.dart';
 
-/// 🧾 Not Detay Ekranı — Clean Architecture uyumlu versiyon.
 class NotDetail extends StatefulWidget {
   final int noteId;
 
@@ -37,37 +31,15 @@ class _NotDetailState extends State<NotDetail> {
   Not? not;
   Color selectedColor = Colors.greenAccent;
 
-  // ✅ UseCase'ler
-  late final GetNotById _getNotByIdUseCase;
-  late final GetOncelikById _getOncelikByIdUseCase;
-  late final DeleteNot _deleteNotUseCase;
-  late final CreateNot _createNotUseCase;
-  late final UpdateNot _updateNotUseCase;
-  late final GetAllKategori _getAllKategoriUseCase;
-  late final GetAllOncelik _getAllOncelikUseCase;
+  // ✅ UseCase'leri DI Container'dan çekiyoruz
+  // Artık burada manuel Repository oluşturma YOK.
+  final GetNotById _getNotByIdUseCase = sl<GetNotById>();
+  final GetOncelikById _getOncelikByIdUseCase = sl<GetOncelikById>();
+  final DeleteNot _deleteNotUseCase = sl<DeleteNot>();
 
   @override
   void initState() {
     super.initState();
-
-    // 💾 Repository ve UseCase bağlantıları
-    final db = DatabaseHelper.instance;
-    final kategoriRepo = KategoriRepositoryImpl(db);
-    final oncelikRepo = OncelikRepositoryImpl(db);
-    final notRepo = NotRepositoryImpl(
-      db,
-      kategoriRepository: kategoriRepo,
-      oncelikRepository: oncelikRepo,
-    );
-
-    _getNotByIdUseCase = GetNotById(notRepo);
-    _getOncelikByIdUseCase = GetOncelikById(oncelikRepo);
-    _deleteNotUseCase = DeleteNot(notRepo);
-    _createNotUseCase = CreateNot(notRepo);
-    _updateNotUseCase = UpdateNot(notRepo);
-    _getAllKategoriUseCase = GetAllKategori(kategoriRepo);
-    _getAllOncelikUseCase = GetAllOncelik(oncelikRepo);
-
     _loadNote();
   }
 
@@ -78,8 +50,7 @@ class _NotDetailState extends State<NotDetail> {
       final fetchedNote = await _getNotByIdUseCase(widget.noteId);
       if (fetchedNote == null) throw Exception('Note not found');
 
-      final oncelik =
-          await _getOncelikByIdUseCase(fetchedNote.oncelikId);
+      final oncelik = await _getOncelikByIdUseCase(fetchedNote.oncelikId);
       final renk = ColorHelper.hexToColor(oncelik?.renkKodu ?? '#A5D6A7');
 
       if (mounted) {
@@ -219,13 +190,8 @@ class _NotDetailState extends State<NotDetail> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => NotAddEdit(
-                not: not!,
-                createNotUseCase: _createNotUseCase,
-                updateNotUseCase: _updateNotUseCase,
-                getAllKategoriUseCase: _getAllKategoriUseCase,
-                getAllOncelikUseCase: _getAllOncelikUseCase,
-              ),
+              // Artık parametre göndermeye gerek yok, AddEdit ekranı kendi DI'ını yapıyor
+              builder: (_) => NotAddEdit(not: not!),
             ),
           ).then((_) => _loadNote());
         },

@@ -8,15 +8,12 @@ import '../../../domain/entities/oncelik.dart';
 import '../../../domain/usecases/oncelik/get_oncelik_by_id.dart';
 import '../../../domain/usecases/oncelik/delete_oncelik.dart';
 
-// Data
-import '../../../data/repositories/oncelik_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
+// DI
+import '../../../../core/di/injection_container.dart';
 
 // UI
 import '../oncelik/oncelik_add_edit.dart';
 
-/// 📝 Öncelik detay sayfası.
-/// Clean Architecture — Entity & UseCase tabanlı yapı.
 class OncelikDetail extends StatefulWidget {
   final int oncelikId;
 
@@ -30,17 +27,13 @@ class _OncelikDetailState extends State<OncelikDetail> {
   Oncelik? oncelik;
   bool isLoading = false;
 
-  late final GetOncelikById _getOncelikByIdUseCase;
-  late final DeleteOncelik _deleteOncelikUseCase;
+  // ✅ UseCase'ler DI'dan
+  final GetOncelikById _getOncelikByIdUseCase = sl<GetOncelikById>();
+  final DeleteOncelik _deleteOncelikUseCase = sl<DeleteOncelik>();
 
   @override
   void initState() {
     super.initState();
-
-    final repository = OncelikRepositoryImpl(DatabaseHelper.instance);
-    _getOncelikByIdUseCase = GetOncelikById(repository);
-    _deleteOncelikUseCase = DeleteOncelik(repository);
-
     _refreshOncelik();
   }
 
@@ -162,11 +155,14 @@ class _OncelikDetailState extends State<OncelikDetail> {
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 8),
             children: [
-              _buildLabelValue(local.translate('general_title'), oncelik!.baslik),
+              _buildLabelValue(
+                  local.translate('general_title'), oncelik!.baslik),
               const SizedBox(height: 12),
-              _buildLabelValue(local.translate('general_explanation'), oncelik!.aciklama),
+              _buildLabelValue(
+                  local.translate('general_explanation'), oncelik!.aciklama),
               const SizedBox(height: 12),
-              _buildLabelValue(local.translate('general_colorCode'), oncelik!.renkKodu),
+              _buildLabelValue(
+                  local.translate('general_colorCode'), oncelik!.renkKodu),
               const SizedBox(height: 12),
               _buildLabelValue(
                 local.translate('general_registrationDate'),
@@ -175,7 +171,9 @@ class _OncelikDetailState extends State<OncelikDetail> {
               const SizedBox(height: 12),
               _buildLabelValue(
                 local.translate('general_isFixed'),
-                oncelik!.sabitMi ? local.translate('general_yes') : local.translate('general_no'),
+                oncelik!.sabitMi
+                    ? local.translate('general_yes')
+                    : local.translate('general_no'),
               ),
             ],
           ),

@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 
-// 🌍 Çoklu dil desteği
+// Localization
 import '../../../../localization/localization.dart';
 
-// Core config (tarih formatı için)
+// Core
 import '../../../../core/config/app_config.dart';
 
-// Domain & Data
+// Domain
 import '../../../domain/entities/durum.dart';
 import '../../../domain/usecases/durum/get_durum_by_id.dart';
 import '../../../domain/usecases/durum/delete_durum.dart';
-import '../../../data/repositories/durum_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
 
-// UI ekranları
+// DI
+import '../../../../core/di/injection_container.dart';
+
+// UI
 import 'durum_add_edit.dart';
 
-/// 🧾 Durum Detay Ekranı (Clean Architecture + Çoklu Dil)
 class DurumDetail extends StatefulWidget {
   final int durumId;
 
@@ -27,8 +27,9 @@ class DurumDetail extends StatefulWidget {
 }
 
 class _DurumDetailState extends State<DurumDetail> {
-  late final GetDurumById _getDurumUseCase;
-  late final DeleteDurum _deleteDurumUseCase;
+  // ✅ UseCase'ler DI'dan geliyor
+  final GetDurumById _getDurumUseCase = sl<GetDurumById>();
+  final DeleteDurum _deleteDurumUseCase = sl<DeleteDurum>();
 
   Durum? durum;
   bool isLoading = false;
@@ -36,13 +37,9 @@ class _DurumDetailState extends State<DurumDetail> {
   @override
   void initState() {
     super.initState();
-    final repository = DurumRepositoryImpl(DatabaseHelper.instance);
-    _getDurumUseCase = GetDurumById(repository);
-    _deleteDurumUseCase = DeleteDurum(repository);
     _loadDurum();
   }
 
-  /// 📦 Durum bilgilerini yükler
   Future<void> _loadDurum() async {
     setState(() => isLoading = true);
     try {
@@ -52,8 +49,9 @@ class _DurumDetailState extends State<DurumDetail> {
       debugPrint('❌ Durum yüklenemedi: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)
-              .translate('general_errorLoading'))),
+          SnackBar(
+              content: Text(AppLocalizations.of(context)
+                  .translate('general_errorLoading'))),
         );
       }
     } finally {
@@ -61,7 +59,6 @@ class _DurumDetailState extends State<DurumDetail> {
     }
   }
 
-  /// 🗑️ Silme onayı penceresi
   Future<void> _showDeleteConfirmationDialog() async {
     final local = AppLocalizations.of(context);
     return showDialog<void>(
@@ -103,8 +100,8 @@ class _DurumDetailState extends State<DurumDetail> {
       );
     }
 
-    final color =
-        Color(int.parse(durum!.renkKodu.substring(1), radix: 16)).withAlpha(255);
+    final color = Color(int.parse(durum!.renkKodu.substring(1), radix: 16))
+        .withAlpha(255);
 
     return Scaffold(
       backgroundColor: Colors.green.shade50,
@@ -168,7 +165,6 @@ class _DurumDetailState extends State<DurumDetail> {
     );
   }
 
-  /// 🔹 Ortak detay satırı
   Widget _buildDetailRow({
     required String title,
     required String value,
@@ -197,7 +193,6 @@ class _DurumDetailState extends State<DurumDetail> {
     );
   }
 
-  /// 🖊️ Düzenle butonu
   Widget _buildEditButton(BuildContext context, AppLocalizations local) {
     return IconButton(
       icon: const Icon(Icons.edit_outlined),
@@ -213,7 +208,6 @@ class _DurumDetailState extends State<DurumDetail> {
     );
   }
 
-  /// 🗑️ Sil butonu
   Widget _buildDeleteButton(AppLocalizations local) {
     return IconButton(
       icon: const Icon(Icons.delete_outline),

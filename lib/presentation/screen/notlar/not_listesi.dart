@@ -1,160 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../../../../localization/localization.dart';
 import '../../../data/datasources/database_update_notifier.dart';
-import '../../../domain/entities/not.dart';
-import '../../../domain/usecases/not/get_all_not.dart';
-import '../../../domain/usecases/not/search_not.dart';
-import '../../../domain/usecases/not/create_not.dart';
-import '../../../domain/usecases/not/update_not.dart';
-import '../../../domain/usecases/kategori/get_all_kategori.dart';
-import '../../../domain/usecases/oncelik/get_all_oncelik.dart';
-import '../../../domain/usecases/kategori/get_kategori_by_id.dart';
-import '../../../domain/usecases/oncelik/get_oncelik_by_id.dart';
-import '../../../data/repositories/not_repository_impl.dart';
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/repositories/oncelik_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
+
+// Provider Importu
+import 'providers/not_providers.dart';
+
+// UI Widgets
 import 'not_card.dart';
 import 'not_detail.dart';
 import 'not_add_edit.dart';
 
-/// 🗒️ NOT LİSTESİ EKRANI (GÜNCEL SÜRÜM)
-/// - Artık `GetAllNot` dışarıdan beklenmiyor.
-/// - Repository ve UseCase'ler içeride oluşturuluyor.
-class NotListesi extends StatefulWidget {
+/// 🗒️ NOT LİSTESİ EKRANI (TAMAMEN TEMİZLENMİŞ SÜRÜM)
+class NotListesi extends ConsumerStatefulWidget {
   const NotListesi({super.key});
 
   @override
-  State<NotListesi> createState() => _NotListesiState();
+  ConsumerState<NotListesi> createState() => _NotListesiState();
 }
 
-class _NotListesiState extends State<NotListesi> {
+class _NotListesiState extends ConsumerState<NotListesi> {
   final TextEditingController _searchController = TextEditingController();
-
-  List<Not> _notlar = [];
-  List<Not> _filtered = [];
-  bool _isLoading = false;
-
-  // UseCases
-  late final GetAllNot _getAllNotUseCase;
-  late final SearchNot _searchNotUseCase;
-  late final CreateNot _createNotUseCase;
-  late final UpdateNot _updateNotUseCase;
-  late final GetAllKategori _getAllKategoriUseCase;
-  late final GetAllOncelik _getAllOncelikUseCase;
-  late final GetKategoriById _getKategoriById;
-  late final GetOncelikById _getOncelikById;
 
   @override
   void initState() {
     super.initState();
-    _setupUseCases();
-    _loadNotlar();
 
+    // Veritabanı değiştiğinde listeyi yenilemek için listener
     DatabaseUpdateNotifier.instance.addListener(_onDatabaseChanged);
-    _searchController.addListener(_filterLocalNotes);
+
+    // Arama dinleyicisi
+    _searchController.addListener(() {
+      ref
+          .read(notNotifierProvider.notifier)
+          .filterLocalNotes(_searchController.text);
+    });
   }
 
   @override
   void dispose() {
     DatabaseUpdateNotifier.instance.removeListener(_onDatabaseChanged);
-    _searchController.removeListener(_filterLocalNotes);
     _searchController.dispose();
     super.dispose();
   }
 
-  void _setupUseCases() {
-    final db = DatabaseHelper.instance;
-    final kategoriRepo = KategoriRepositoryImpl(db);
-    final oncelikRepo = OncelikRepositoryImpl(db);
-    final notRepo = NotRepositoryImpl(
-      db,
-      kategoriRepository: kategoriRepo,
-      oncelikRepository: oncelikRepo,
-    );
-
-    _getAllNotUseCase = GetAllNot(notRepo);
-    _searchNotUseCase = SearchNot(notRepo);
-    _createNotUseCase = CreateNot(notRepo);
-    _updateNotUseCase = UpdateNot(notRepo);
-    _getAllKategoriUseCase = GetAllKategori(kategoriRepo);
-    _getAllOncelikUseCase = GetAllOncelik(oncelikRepo);
-    _getKategoriById = GetKategoriById(kategoriRepo);
-    _getOncelikById = GetOncelikById(oncelikRepo);
-  }
-
   void _onDatabaseChanged() {
-    debugPrint('📢 NotListesi: Database değişti, liste yenileniyor...');
-    _loadNotlar();
-  }
-
-  Future<void> _loadNotlar() async {
-    if (_isLoading) return;
-    setState(() => _isLoading = true);
-
-    try {
-      final result = await _getAllNotUseCase.call();
-      if (!mounted) return;
-
-      setState(() {
-        _notlar = result;
-        _filtered = result;
-      });
-
-      debugPrint('✅ ${result.length} not yüklendi.');
-    } catch (e) {
-      debugPrint('⚠️ Notlar yüklenemedi: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context)
-                  .translate('general_errorOccurredWhileLoading'),
-            ),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _filterLocalNotes() {
-    final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) {
-      setState(() => _filtered = _notlar);
-      return;
-    }
-
-    setState(() {
-      _filtered = _notlar.where((not) {
-        final baslik = not.baslik.toLowerCase();
-        final aciklama = not.aciklama.toLowerCase();
-        return baslik.contains(query) || aciklama.contains(query);
-      }).toList();
-    });
-  }
-
-  Future<void> _searchFromDb(String query) async {
-    if (query.isEmpty) {
-      setState(() => _filtered = _notlar);
-      return;
-    }
-
-    try {
-      final result = await _searchNotUseCase(query);
-      if (!mounted) return;
-      setState(() => _filtered = result);
-    } catch (e) {
-      debugPrint('🔎 Arama başarısız: $e');
-    }
+    // Provider üzerindeki veriyi yenile
+    ref.read(notNotifierProvider.notifier).loadNotlar();
   }
 
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
+
+    // STATE İZLEME
+    final notState = ref.watch(notNotifierProvider);
+
+    // Hata kontrolü (SnackBar ile)
+    ref.listen(notNotifierProvider, (previous, next) {
+      if (next.errorMessage != null &&
+          next.errorMessage != previous?.errorMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.errorMessage!)),
+        );
+      }
+    });
 
     return Scaffold(
       backgroundColor: Colors.deepPurple[50],
@@ -172,6 +84,7 @@ class _NotListesiState extends State<NotListesi> {
       ),
       body: Column(
         children: [
+          // --- ARAMA ALANI ---
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -183,25 +96,33 @@ class _NotListesiState extends State<NotListesi> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onSubmitted: _searchFromDb,
+              onSubmitted: (query) {
+                ref.read(notNotifierProvider.notifier).searchFromDb(query);
+              },
             ),
           ),
+
+          // --- LİSTE ALANI ---
           Expanded(
-            child: _isLoading
+            child: notState.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _filtered.isEmpty
+                : notState.filteredNotlar.isEmpty
                     ? _buildEmptyState(loc)
                     : RefreshIndicator(
-                        onRefresh: _loadNotlar,
+                        onRefresh: () async {
+                          await ref
+                              .read(notNotifierProvider.notifier)
+                              .loadNotlar();
+                        },
                         child: MasonryGridView.count(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(8),
                           crossAxisCount: 2,
                           mainAxisSpacing: 6,
                           crossAxisSpacing: 6,
-                          itemCount: _filtered.length,
+                          itemCount: notState.filteredNotlar.length,
                           itemBuilder: (context, index) {
-                            final not = _filtered[index];
+                            final not = notState.filteredNotlar[index];
                             return GestureDetector(
                               onTap: () async {
                                 await Navigator.push(
@@ -213,12 +134,15 @@ class _NotListesiState extends State<NotListesi> {
                                     ),
                                   ),
                                 );
-                                _loadNotlar();
+                                // Detaydan dönünce listeyi yenile
+                                ref
+                                    .read(notNotifierProvider.notifier)
+                                    .loadNotlar();
                               },
                               child: NotCard(
                                 not: not,
-                                getKategoriById: _getKategoriById,
-                                getOncelikById: _getOncelikById,
+                                // 🚨 DÜZELTME: Artık parametre göndermiyoruz.
+                                // NotCard kendi içinde 'sl' ile çözüyor.
                               ),
                             );
                           },
@@ -227,8 +151,10 @@ class _NotListesiState extends State<NotListesi> {
           ),
         ],
       ),
+
+      // --- FAB BUTTON ---
       floatingActionButton: FloatingActionButton(
-         heroTag: 'not_listesi_fab', // ← benzersiz heroTag ekledik
+        heroTag: 'not_listesi_fab',
         backgroundColor: const Color(0xFF4E125C),
         tooltip: loc.translate('add_new_note'),
         child: const Icon(Icons.add, color: Colors.white),
@@ -236,15 +162,14 @@ class _NotListesiState extends State<NotListesi> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => NotAddEdit(
-                createNotUseCase: _createNotUseCase,
-                updateNotUseCase: _updateNotUseCase,
-                getAllKategoriUseCase: _getAllKategoriUseCase,
-                getAllOncelikUseCase: _getAllOncelikUseCase,
-              ),
+              builder: (_) => const NotAddEdit(
+                  // 🚨 DÜZELTME: Artık parametre göndermiyoruz.
+                  // NotAddEdit kendi içinde 'sl' ile çözüyor.
+                  ),
             ),
           );
-          _loadNotlar();
+          // Ekleme ekranından dönünce listeyi yenile
+          ref.read(notNotifierProvider.notifier).loadNotlar();
         },
       ),
     );

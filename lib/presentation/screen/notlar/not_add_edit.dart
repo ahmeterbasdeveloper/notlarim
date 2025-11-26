@@ -5,10 +5,12 @@ import 'package:notlarim/data/models/oncelik_model.dart';
 import '../../../../core/utils/color_helper.dart';
 import '../../../../localization/localization.dart';
 
-// 🧠 Domain Entities & UseCases
+// 🧠 Domain Entities
 import '../../../domain/entities/not.dart';
 import '../../../domain/entities/kategori.dart';
 import '../../../domain/entities/oncelik.dart';
+
+// 🧠 Domain UseCases
 import '../../../domain/usecases/not/create_not.dart';
 import '../../../domain/usecases/not/update_not.dart';
 import '../../../domain/usecases/kategori/get_all_kategori.dart';
@@ -17,21 +19,16 @@ import '../../../domain/usecases/oncelik/get_all_oncelik.dart';
 import '../../../domain/usecases/oncelik/get_first_oncelik.dart';
 import '../../../domain/usecases/oncelik/get_oncelik_by_id.dart';
 
-/// 📄 NOT EKLE / DÜZENLE EKRANI
+// DI
+import '../../../../core/di/injection_container.dart';
+
 class NotAddEdit extends StatefulWidget {
   final Not? not;
-  final CreateNot createNotUseCase;
-  final UpdateNot updateNotUseCase;
-  final GetAllKategori getAllKategoriUseCase;
-  final GetAllOncelik getAllOncelikUseCase;
 
+  // Constructor sadeleşti
   const NotAddEdit({
     super.key,
     this.not,
-    required this.createNotUseCase,
-    required this.updateNotUseCase,
-    required this.getAllKategoriUseCase,
-    required this.getAllOncelikUseCase,
   });
 
   @override
@@ -41,7 +38,6 @@ class NotAddEdit extends StatefulWidget {
 class _NotAddEditState extends State<NotAddEdit> {
   final _formKey = GlobalKey<FormState>();
 
-  // 🧠 Form alanları
   String baslik = '';
   String aciklama = '';
   int kategoriId = 0;
@@ -50,10 +46,18 @@ class _NotAddEditState extends State<NotAddEdit> {
   List<Oncelik> oncelikListesi = [];
   Color selectedColor = Colors.grey.shade300;
 
-  // 🧠 Ek UseCase’ler
-  late final GetFirstKategori _getFirstKategoriUseCase;
-  late final GetFirstOncelik _getFirstOncelikUseCase;
-  late final GetOncelikById _getOncelikByIdUseCase;
+  // UseCase'leri DI'dan çekiyoruz
+  final CreateNot _createNotUseCase = sl<CreateNot>();
+  final UpdateNot _updateNotUseCase = sl<UpdateNot>();
+  final GetAllKategori _getAllKategoriUseCase = sl<GetAllKategori>();
+  final GetAllOncelik _getAllOncelikUseCase = sl<GetAllOncelik>();
+  final GetFirstKategori _getFirstKategoriUseCase =
+      sl<GetFirstKategori>(); // Not: Bunu DI container'a eklediğinden emin ol
+  // Eğer GetFirstKategori'yi DI'a eklemediysen:
+  // final GetFirstKategori _getFirstKategoriUseCase = GetFirstKategori(sl<KategoriRepository>());
+  final GetFirstOncelik _getFirstOncelikUseCase =
+      sl<GetFirstOncelik>(); // Aynı şekilde kontrol et
+  final GetOncelikById _getOncelikByIdUseCase = sl<GetOncelikById>();
 
   @override
   void initState() {
@@ -64,34 +68,38 @@ class _NotAddEditState extends State<NotAddEdit> {
     kategoriId = widget.not?.kategoriId ?? 0;
     oncelikId = widget.not?.oncelikId ?? 0;
 
-    _getFirstKategoriUseCase =
-        GetFirstKategori(widget.getAllKategoriUseCase.repository);
-    _getFirstOncelikUseCase =
-        GetFirstOncelik(widget.getAllOncelikUseCase.repository);
-    _getOncelikByIdUseCase =
-        GetOncelikById(widget.getAllOncelikUseCase.repository);
+    // Not: injection_container.dart içinde GetFirst... usecaselerini tanımlamadıysak
+    // hata alabilirsin. Tanımladığını varsayıyorum. Eğer yoksa en aşağıya not ekledim.
 
     _loadDropdownData();
   }
 
-  /// 🧩 Dropdown verilerini yükler
   Future<void> _loadDropdownData() async {
     try {
-      final kategoriList = await widget.getAllKategoriUseCase();
-      final oncelikList = await widget.getAllOncelikUseCase();
+      final kategoriList = await _getAllKategoriUseCase();
+      final oncelikList = await _getAllOncelikUseCase();
 
       if (mounted) {
         if (widget.not == null) {
           // 🆕 Yeni not
-          final ilkKategori = await _getFirstKategoriUseCase();
-          final ilkOncelik = await _getFirstOncelikUseCase();
+          Kategori? ilkKategori;
+          Oncelik? ilkOncelik;
+
+          // Hata önleyici: Veritabanı boşsa crash olmasın
+          try {
+            ilkKategori = await _getFirstKategoriUseCase();
+            ilkOncelik = await _getFirstOncelikUseCase();
+          } catch (_) {}
 
           setState(() {
             kategoriListesi = kategoriList;
             oncelikListesi = oncelikList;
-            kategoriId = ilkKategori.id ?? kategoriList.first.id!;
-            oncelikId = ilkOncelik.id ?? oncelikList.first.id!;
-            selectedColor = ColorHelper.hexToColor(ilkOncelik.renkKodu);
+            kategoriId = ilkKategori?.id ??
+                (kategoriList.isNotEmpty ? kategoriList.first.id! : 0);
+            oncelikId = ilkOncelik?.id ??
+                (oncelikList.isNotEmpty ? oncelikList.first.id! : 0);
+            selectedColor =
+                ColorHelper.hexToColor(ilkOncelik?.renkKodu ?? '#CCCCCC');
           });
         } else {
           // ✏️ Düzenleme modu
@@ -115,7 +123,6 @@ class _NotAddEditState extends State<NotAddEdit> {
     }
   }
 
-  /// 💾 Kaydet / Güncelle
   Future<void> _saveNot() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -134,9 +141,9 @@ class _NotAddEditState extends State<NotAddEdit> {
 
     try {
       if (isUpdating) {
-        await widget.updateNotUseCase(yeniNot);
+        await _updateNotUseCase(yeniNot);
       } else {
-        await widget.createNotUseCase(yeniNot);
+        await _createNotUseCase(yeniNot);
       }
 
       if (mounted) Navigator.pop(context);
@@ -202,7 +209,9 @@ class _NotAddEditState extends State<NotAddEdit> {
     );
   }
 
-  // 🧱 --- ALT WIDGET’LAR ---
+  // ... _buildKategoriDropdown, _buildOncelikDropdown vb. metodlar aynen kalabilir
+  // Sadece içlerinde UseCase çağırmıyorsan değişiklik gerekmez.
+  // Eğer çağırıyorsan widget.useCase yerine yukarıda tanımladığımız _useCase değişkenlerini kullan.
 
   Widget _buildKategoriDropdown(AppLocalizations loc) {
     return DropdownButtonFormField<int>(
@@ -234,7 +243,6 @@ class _NotAddEditState extends State<NotAddEdit> {
           .toList(),
       onChanged: (val) {
         if (val == null || oncelikListesi.isEmpty) return;
-
         final secilen = oncelikListesi.firstWhere(
           (o) => o.id == val,
           orElse: () => OncelikModel(
@@ -246,7 +254,6 @@ class _NotAddEditState extends State<NotAddEdit> {
             sabitMi: false,
           ),
         );
-
         setState(() {
           oncelikId = val;
           selectedColor = ColorHelper.hexToColor(

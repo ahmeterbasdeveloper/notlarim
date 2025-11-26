@@ -33,7 +33,9 @@ dependencies:
   shared_preferences: ^2.5.3
   share_plus: ^12.0.1   # (en güncel sürüm otomatik alınır)
   flutter_riverpod: ^2.6.1
-
+  get_it: ^8.3.0
+  crypto: ^3.0.7
+  flutter_native_splash: ^2.4.7
 
 dev_dependencies:
   flutter_test:
@@ -53,3 +55,13 @@ flutter:
     - assets/jsons/
     - assets/logos/
     - assets/lang/
+
+
+# pubspec.yaml dosyasının en altına ekleyin:
+flutter_native_splash:
+  color: "#2196F3" # Mavi arka plan (Senin Colors.blue ile aynı)
+  image: "assets/images/icon_aap_kurt1.png" # Logonun yolu
+  android_12:
+    image: "assets/images/icon_aap_kurt1.png"
+    icon_background_color: "#2196F3"
+  fullscreen: true

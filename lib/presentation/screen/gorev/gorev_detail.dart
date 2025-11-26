@@ -6,16 +6,9 @@ import '../../../../core/config/app_config.dart';
 import '../../../../domain/entities/gorev.dart';
 import '../../../../domain/usecases/gorev/get_gorev_by_id.dart';
 import '../../../../domain/usecases/gorev/delete_gorev.dart';
-import '../../../../domain/usecases/gorev/create_gorev.dart';
-import '../../../../domain/usecases/gorev/update_gorev.dart';
-import '../../../../domain/usecases/kategori/get_all_kategori.dart';
-import '../../../../domain/usecases/oncelik/get_all_oncelik.dart';
 
-// Data
-import '../../../data/datasources/database_helper.dart';
-import '../../../data/repositories/gorev_repository_impl.dart';
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/repositories/oncelik_repository_impl.dart';
+// DI
+import '../../../../core/di/injection_container.dart';
 
 // UI
 import 'gorev_add_edit.dart';
@@ -30,11 +23,9 @@ class GorevDetail extends StatefulWidget {
 }
 
 class _GorevDetailState extends State<GorevDetail> {
-  late final GetGorevById _getGorevByIdUseCase;
-  late final DeleteGorev _deleteGorevUseCase;
-
-  late final GetAllKategori _getAllKategoriUseCase;
-  late final GetAllOncelik _getAllOncelikUseCase;
+  // ✅ UseCase'leri DI'dan çekiyoruz
+  final GetGorevById _getGorevByIdUseCase = sl<GetGorevById>();
+  final DeleteGorev _deleteGorevUseCase = sl<DeleteGorev>();
 
   Gorev? gorev;
   bool isLoading = false;
@@ -42,18 +33,6 @@ class _GorevDetailState extends State<GorevDetail> {
   @override
   void initState() {
     super.initState();
-
-    // Repositories
-    final gorevRepo = GorevRepositoryImpl(DatabaseHelper.instance);
-    final kategoriRepo = KategoriRepositoryImpl(DatabaseHelper.instance);
-    final oncelikRepo = OncelikRepositoryImpl(DatabaseHelper.instance);
-
-    // UseCases
-    _getGorevByIdUseCase = GetGorevById(gorevRepo);
-    _deleteGorevUseCase = DeleteGorev(gorevRepo);
-    _getAllKategoriUseCase = GetAllKategori(kategoriRepo);
-    _getAllOncelikUseCase = GetAllOncelik(oncelikRepo);
-
     _refreshGorev();
   }
 
@@ -105,15 +84,9 @@ class _GorevDetailState extends State<GorevDetail> {
             onPressed: isLoading || gorev == null
                 ? null
                 : () async {
-                    // Görev Düzenleme ekranına doğru tiplerle gönder
+                    // Düzenleme ekranına parametre göndermeden yönlendiriyoruz
                     await Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => GorevAddEdit(
-                        gorev: gorev!,
-                        createGorevUseCase: CreateGorev(GorevRepositoryImpl(DatabaseHelper.instance)),
-                        updateGorevUseCase: UpdateGorev(GorevRepositoryImpl(DatabaseHelper.instance)),
-                        getAllKategoriUseCase: _getAllKategoriUseCase,
-                        getAllOncelikUseCase: _getAllOncelikUseCase,
-                      ),
+                      builder: (context) => GorevAddEdit(gorev: gorev!),
                     ));
                     _refreshGorev();
                   },
@@ -142,7 +115,8 @@ class _GorevDetailState extends State<GorevDetail> {
     );
   }
 
-  Widget _buildDetail(BuildContext context, Gorev gorev, AppLocalizations local) {
+  Widget _buildDetail(
+      BuildContext context, Gorev gorev, AppLocalizations local) {
     return Padding(
       padding: const EdgeInsets.all(12),
       child: ListView(

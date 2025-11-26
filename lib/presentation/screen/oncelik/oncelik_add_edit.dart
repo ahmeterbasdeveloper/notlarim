@@ -10,12 +10,9 @@ import '../../../domain/entities/oncelik.dart';
 import '../../../domain/usecases/oncelik/create_oncelik.dart';
 import '../../../domain/usecases/oncelik/update_oncelik.dart';
 
-// Data
-import '../../../data/repositories/oncelik_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
+// DI
+import '../../../core/di/injection_container.dart';
 
-/// 🧩 Öncelik ekleme ve güncelleme ekranı.
-/// Clean Architecture + Çoklu Dil Desteği (AppLocalizations)
 class AddEditOncelik extends StatefulWidget {
   final Oncelik? oncelik;
 
@@ -34,16 +31,13 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
   late bool sabitMi;
   late Color selectedColor;
 
-  late final CreateOncelik _createOncelikUseCase;
-  late final UpdateOncelik _updateOncelikUseCase;
+  // ✅ UseCase'leri DI'dan çekiyoruz
+  final CreateOncelik _createOncelikUseCase = sl<CreateOncelik>();
+  final UpdateOncelik _updateOncelikUseCase = sl<UpdateOncelik>();
 
   @override
   void initState() {
     super.initState();
-
-    final repository = OncelikRepositoryImpl(DatabaseHelper.instance);
-    _createOncelikUseCase = CreateOncelik(repository);
-    _updateOncelikUseCase = UpdateOncelik(repository);
 
     baslik = widget.oncelik?.baslik ?? '';
     aciklama = widget.oncelik?.aciklama ?? '';
@@ -106,121 +100,8 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
     );
   }
 
-  /// Başlık alanı
-  Widget _buildBaslikField(BuildContext context) {
-    final local = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          local.translate('general_title'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          initialValue: baslik,
-          maxLines: 1,
-          style: const TextStyle(color: Colors.black, fontSize: 16),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            hintText: local.translate('general_titleWarningMessage'),
-            hintStyle: const TextStyle(color: Colors.grey),
-          ),
-          validator: (v) => v == null || v.isEmpty
-              ? local.translate('general_fillBlankFieldsMessage')
-              : null,
-          onChanged: (v) => setState(() => baslik = v),
-        ),
-      ],
-    );
-  }
+  // ... _build... metodları aynı kalabilir, sadece _saveOncelik güncellenmeli:
 
-  /// Açıklama alanı
-  Widget _buildAciklamaField(BuildContext context) {
-    final local = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          local.translate('general_explanation'),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          initialValue: aciklama,
-          maxLines: 3,
-          style: const TextStyle(color: Colors.black, fontSize: 16),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            hintText: local.translate('general_explanationWarningMessage'),
-            hintStyle: const TextStyle(color: Colors.grey),
-          ),
-          validator: (v) => v == null || v.isEmpty
-              ? local.translate('general_fillBlankFieldsMessage')
-              : null,
-          onChanged: (v) => setState(() => aciklama = v),
-        ),
-      ],
-    );
-  }
-
-  /// Renk seçici alanı
-  Widget _buildRenkSecici(BuildContext context) {
-    final local = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              local.translate('general_colorCode'),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
-            ),
-            ElevatedButton(
-              onPressed: () => _showColorPickerDialog(context),
-              child: Text(local.translate('general_chooseColorMessage')),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          maxLines: 1,
-          controller: TextEditingController(text: renkKodu),
-          enabled: false,
-          style: const TextStyle(color: Colors.black, fontSize: 16),
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            hintText: local.translate('general_colorCode'),
-            hintStyle: const TextStyle(color: Colors.grey),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Kaydet / Güncelle butonu
-  Widget _buildKaydetButton(BuildContext context, bool isEditing) {
-    final local = AppLocalizations.of(context);
-    final isFormValid = baslik.isNotEmpty && aciklama.isNotEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isFormValid ? Colors.indigo.shade600 : Colors.blueGrey.shade700,
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        ),
-        onPressed: _saveOncelik,
-        child: Text(
-          local.translate('general_save'),
-          style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  /// Önceliği kaydet veya güncelle
   Future<void> _saveOncelik() async {
     final local = AppLocalizations.of(context);
     if (!_formKey.currentState!.validate()) return;
@@ -249,7 +130,124 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
     }
   }
 
-  /// Renk seçici dialog
+  // ... Diğer yardımcı widget'lar:
+  Widget _buildBaslikField(BuildContext context) {
+    final local = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          local.translate('general_title'),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          initialValue: baslik,
+          maxLines: 1,
+          style: const TextStyle(color: Colors.black, fontSize: 16),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            hintText: local.translate('general_titleWarningMessage'),
+            hintStyle: const TextStyle(color: Colors.grey),
+          ),
+          validator: (v) => v == null || v.isEmpty
+              ? local.translate('general_fillBlankFieldsMessage')
+              : null,
+          onChanged: (v) => setState(() => baslik = v),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAciklamaField(BuildContext context) {
+    final local = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          local.translate('general_explanation'),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          initialValue: aciklama,
+          maxLines: 3,
+          style: const TextStyle(color: Colors.black, fontSize: 16),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            hintText: local.translate('general_explanationWarningMessage'),
+            hintStyle: const TextStyle(color: Colors.grey),
+          ),
+          validator: (v) => v == null || v.isEmpty
+              ? local.translate('general_fillBlankFieldsMessage')
+              : null,
+          onChanged: (v) => setState(() => aciklama = v),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRenkSecici(BuildContext context) {
+    final local = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              local.translate('general_colorCode'),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.black),
+            ),
+            ElevatedButton(
+              onPressed: () => _showColorPickerDialog(context),
+              child: Text(local.translate('general_chooseColorMessage')),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          maxLines: 1,
+          controller: TextEditingController(text: renkKodu),
+          enabled: false,
+          style: const TextStyle(color: Colors.black, fontSize: 16),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            hintText: local.translate('general_colorCode'),
+            hintStyle: const TextStyle(color: Colors.grey),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKaydetButton(BuildContext context, bool isEditing) {
+    final local = AppLocalizations.of(context);
+    final isFormValid = baslik.isNotEmpty && aciklama.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              isFormValid ? Colors.indigo.shade600 : Colors.blueGrey.shade700,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        ),
+        onPressed: _saveOncelik,
+        child: Text(
+          local.translate('general_save'),
+          style: const TextStyle(
+              fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
   void _showColorPickerDialog(BuildContext context) {
     final local = AppLocalizations.of(context);
     showDialog(
@@ -277,7 +275,6 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
     );
   }
 
-  /// Snackbar bildirimi
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

@@ -1,28 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:notlarim/domain/entities/hatirlatici.dart';
+import 'package:notlarim/localization/localization.dart';
+
+// Domain UseCases
 import 'package:notlarim/domain/usecases/hatirlatici/create_hatirlatici.dart';
 import 'package:notlarim/domain/usecases/hatirlatici/update_hatirlatici.dart';
 import 'package:notlarim/domain/usecases/kategori/get_all_kategori.dart';
 import 'package:notlarim/domain/usecases/oncelik/get_all_oncelik.dart';
-import 'package:notlarim/localization/localization.dart';
+
+// DI
+import '../../../../core/di/injection_container.dart';
 
 import 'hatirlatici_form.dart';
 
 /// 🧱 Hatırlatıcı Ekle / Güncelleme Ekranı — Clean Architecture uyumlu versiyon.
 class HatirlaticiAddEdit extends StatefulWidget {
   final Hatirlatici? hatirlatici;
-  final CreateHatirlatici createHatirlaticiUseCase;
-  final UpdateHatirlatici updateHatirlaticiUseCase;
-  final GetAllKategori getAllKategoriUseCase;
-  final GetAllOncelik getAllOncelikUseCase;
 
   const HatirlaticiAddEdit({
     super.key,
     this.hatirlatici,
-    required this.createHatirlaticiUseCase,
-    required this.updateHatirlaticiUseCase,
-    required this.getAllKategoriUseCase,
-    required this.getAllOncelikUseCase,
   });
 
   @override
@@ -37,6 +34,12 @@ class _HatirlaticiAddEditState extends State<HatirlaticiAddEdit> {
   late int _kategoriId;
   late int _oncelikId;
   late DateTime _hatirlatmaTarihiZamani;
+
+  // ✅ UseCase'ler DI'dan
+  final CreateHatirlatici _createHatirlaticiUseCase = sl<CreateHatirlatici>();
+  final UpdateHatirlatici _updateHatirlaticiUseCase = sl<UpdateHatirlatici>();
+  final GetAllKategori _getAllKategoriUseCase = sl<GetAllKategori>();
+  final GetAllOncelik _getAllOncelikUseCase = sl<GetAllOncelik>();
 
   @override
   void initState() {
@@ -88,15 +91,17 @@ class _HatirlaticiAddEditState extends State<HatirlaticiAddEdit> {
                 onChangedOncelik: (v) => setState(() => _oncelikId = v),
                 onChangedHatirlatmaTarihi: (v) =>
                     setState(() => _hatirlatmaTarihiZamani = v),
-                getAllKategoriUseCase: widget.getAllKategoriUseCase,
-                getAllOncelikUseCase: widget.getAllOncelikUseCase,
+                // UseCase parametreleri form widget'ına gönderiliyor
+                getAllKategoriUseCase: _getAllKategoriUseCase,
+                getAllOncelikUseCase: _getAllOncelikUseCase,
               ),
 
               const SizedBox(height: 16),
 
               /// 💾 Kaydet Butonu
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _baslik.isNotEmpty && _aciklama.isNotEmpty
@@ -132,8 +137,7 @@ class _HatirlaticiAddEditState extends State<HatirlaticiAddEdit> {
   Future<void> _saveHatirlatici() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // 🟢 Hata burada oluşuyordu — loc tanımlı değil
-    final loc = AppLocalizations.of(context); // ✅ Ekledik
+    final loc = AppLocalizations.of(context);
 
     final entity = Hatirlatici(
       id: widget.hatirlatici?.id,
@@ -148,9 +152,9 @@ class _HatirlaticiAddEditState extends State<HatirlaticiAddEdit> {
 
     try {
       if (widget.hatirlatici != null) {
-        await widget.updateHatirlaticiUseCase(entity);
+        await _updateHatirlaticiUseCase(entity);
       } else {
-        await widget.createHatirlaticiUseCase(entity);
+        await _createHatirlaticiUseCase(entity);
       }
 
       if (mounted) {

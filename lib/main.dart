@@ -1,26 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:notlarim/localization/localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
+import 'core/di/injection_container.dart' as di;
 import 'presentation/Screen/anamenu/ana_menu.dart';
 import 'presentation/Screen/splash/splash_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // ✅ DÜZELTME 1: Doğru method 'WidgetsFlutterBinding' sınıfındadır.
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Native Splash ekranını ekranda tut (Beyaz ekranı engeller)
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  await di.init();
+
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  runApp(MyApp());
+
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  _MyAppState createState() => _MyAppState();
+  // ✅ DÜZELTME 2: Private tip (_MyAppState) yerine genel tip (State<MyApp>) döndürülmeli.
+  State<MyApp> createState() => _MyAppState();
 
   static void setLocale(BuildContext context, Locale newLocale) async {
     _MyAppState state = context.findAncestorStateOfType<_MyAppState>()!;

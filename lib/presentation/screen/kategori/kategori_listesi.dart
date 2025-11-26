@@ -1,59 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:notlarim/localization/localization.dart';
 import 'package:notlarim/presentation/Screen/kategori/kategori_add_edit.dart';
 
-// Domain
-import '../../../../domain/entities/kategori.dart';
-import '../../../../domain/usecases/kategori/get_all_kategori.dart';
-
-// Data
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
+// Provider
+import 'providers/kategori_providers.dart'; // ✅ Yeni provider
 
 // UI
 import 'kategori_card.dart';
 import 'kategori_detail.dart';
 
-/// 🧱 Kategori Listesi Ekranı — Clean Architecture versiyonu.
-/// UseCase tabanlı, entity yapısı ile çalışır.
-class KategoriListesi extends StatefulWidget {
+class KategoriListesi extends ConsumerStatefulWidget {
   const KategoriListesi({super.key});
 
   @override
-  State<KategoriListesi> createState() => _KategoriListesiState();
+  ConsumerState<KategoriListesi> createState() => _KategoriListesiState();
 }
 
-class _KategoriListesiState extends State<KategoriListesi> {
-  late final GetAllKategori _getAllKategoriUseCase;
-
-  List<Kategori> kategoriList = [];
-  bool isLoading = false;
-
+class _KategoriListesiState extends ConsumerState<KategoriListesi> {
   @override
   void initState() {
     super.initState();
-    final repository = KategoriRepositoryImpl(DatabaseHelper.instance);
-    _getAllKategoriUseCase = GetAllKategori(repository);
-    _refreshKategoriler();
-  }
-
-  Future<void> _refreshKategoriler() async {
-    setState(() => isLoading = true);
-    try {
-      final result = await _getAllKategoriUseCase();
-      setState(() => kategoriList = result);
-    } catch (e) {
-      debugPrint('❌ Kategori yüklenirken hata: $e');
-      setState(() => kategoriList = []);
-    } finally {
-      setState(() => isLoading = false);
-    }
+    // Sayfa açıldığında verileri yükle (gerekirse)
+    // ref.read(kategoriNotifierProvider.notifier).loadKategoriler();
   }
 
   @override
   Widget build(BuildContext context) {
     final local = AppLocalizations.of(context);
+
+    // ✅ STATE DİNLEME
+    final state = ref.watch(kategoriNotifierProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -64,9 +42,9 @@ class _KategoriListesiState extends State<KategoriListesi> {
         ),
       ),
       body: Center(
-        child: isLoading
+        child: state.isLoading
             ? const CircularProgressIndicator()
-            : kategoriList.isEmpty
+            : state.kategoriler.isEmpty
                 ? Text(
                     '${local.translate('general_anyMessage')} ${local.translate('general_category')} ${local.translate('general_notFound')}',
                     style: const TextStyle(
@@ -75,49 +53,61 @@ class _KategoriListesiState extends State<KategoriListesi> {
                     ),
                     textAlign: TextAlign.center,
                   )
-                : _buildKategoriler(),
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      await ref
+                          .read(kategoriNotifierProvider.notifier)
+                          .loadKategoriler();
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(8),
+                      child: StaggeredGrid.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        children: List.generate(
+                          state.kategoriler.length,
+                          (index) {
+                            final kategori = state.kategoriler[index];
+                            return GestureDetector(
+                              onTap: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => KategoriDetail(
+                                      kategoriId: kategori.id!,
+                                    ),
+                                  ),
+                                );
+                                // Detaydan dönünce listeyi güncelle
+                                ref
+                                    .read(kategoriNotifierProvider.notifier)
+                                    .loadKategoriler();
+                              },
+                              child: KategoriCard(kategori: kategori),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
       ),
       backgroundColor: Colors.deepPurple[50],
+
+      // ✅ FAB
       floatingActionButton: FloatingActionButton(
-         heroTag: 'kategori_listesi_fab', // ← benzersiz heroTag ekledik
+        heroTag: 'kategori_listesi_fab',
         backgroundColor: const Color.fromARGB(255, 78, 18, 92),
         onPressed: () async {
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const AddEditKategori()),
           );
-          _refreshKategoriler();
+          // Ekleme sonrası listeyi güncelle
+          ref.read(kategoriNotifierProvider.notifier).loadKategoriler();
         },
         tooltip: local.translate('general_addCategory'),
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
-
-  Widget _buildKategoriler() => SingleChildScrollView(
-        padding: const EdgeInsets.all(8),
-        child: StaggeredGrid.count(
-          crossAxisCount: 2,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          children: List.generate(
-            kategoriList.length,
-            (index) {
-              final kategori = kategoriList[index];
-              return GestureDetector(
-                onTap: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => KategoriDetail(
-                        kategoriId: kategori.id!,
-                      ),
-                    ),
-                  );
-                  _refreshKategoriler();
-                },
-                child: KategoriCard(kategori: kategori),
-              );
-            },
-          ),
-        ),
-      );
 }

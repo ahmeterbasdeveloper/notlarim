@@ -1,78 +1,38 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:notlarim/domain/entities/gorev.dart';
-import 'package:notlarim/domain/usecases/gorev/get_all_gorev.dart';
 import 'package:notlarim/localization/localization.dart';
 
-// UseCases
-import '../../../../domain/usecases/gorev/create_gorev.dart';
-import '../../../../domain/usecases/gorev/update_gorev.dart';
-import '../../../../domain/usecases/kategori/get_all_kategori.dart';
-import '../../../../domain/usecases/oncelik/get_all_oncelik.dart';
-
-// Repositories
-import '../../../data/datasources/database_helper.dart';
-import '../../../data/repositories/gorev_repository_impl.dart';
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/repositories/oncelik_repository_impl.dart';
+// Provider
+import 'providers/gorev_providers.dart'; // ✅ Oluşturduğumuz provider
 
 // UI
 import 'gorev_card.dart';
 import 'gorev_detail.dart';
 import 'gorev_add_edit.dart';
 
-class GorevListesi extends StatefulWidget {
-  final GetAllGorev getAllGorevUseCase;
-
-  const GorevListesi({super.key, required this.getAllGorevUseCase});
+class GorevListesi extends ConsumerStatefulWidget {
+  const GorevListesi({super.key});
 
   @override
-  State<GorevListesi> createState() => _GorevListesiState();
+  ConsumerState<GorevListesi> createState() => _GorevListesiState();
 }
 
-class _GorevListesiState extends State<GorevListesi> {
-  List<Gorev> gorevList = [];
-  bool isLoading = false;
-
-  // UseCases
-  late final CreateGorev _createGorevUseCase;
-  late final UpdateGorev _updateGorevUseCase;
-  late final GetAllKategori _getAllKategoriUseCase;
-  late final GetAllOncelik _getAllOncelikUseCase;
-
+class _GorevListesiState extends ConsumerState<GorevListesi> {
   @override
   void initState() {
     super.initState();
-    _setupUseCases();
-    refreshGorevler();
-  }
-
-  void _setupUseCases() {
-    final gorevRepo = GorevRepositoryImpl(DatabaseHelper.instance);
-    final kategoriRepo = KategoriRepositoryImpl(DatabaseHelper.instance);
-    final oncelikRepo = OncelikRepositoryImpl(DatabaseHelper.instance);
-
-    _createGorevUseCase = CreateGorev(gorevRepo);
-    _updateGorevUseCase = UpdateGorev(gorevRepo);
-    _getAllKategoriUseCase = GetAllKategori(kategoriRepo);
-    _getAllOncelikUseCase = GetAllOncelik(oncelikRepo);
-  }
-
-  Future<void> refreshGorevler() async {
-    setState(() => isLoading = true);
-    try {
-      gorevList = await widget.getAllGorevUseCase();
-    } catch (e) {
-      if (kDebugMode) print('Görevler yüklenirken hata: $e');
-      gorevList = [];
-    }
-    setState(() => isLoading = false);
+    // Sayfa açıldığında verileri yükle (zaten provider init'te yapıyor ama
+    // geri dönüşlerde tetiklemek için refresh mantığı eklenebilir)
+    // ref.read(gorevNotifierProvider.notifier).loadGorevler();
   }
 
   @override
   Widget build(BuildContext context) {
     final local = AppLocalizations.of(context);
+
+    // ✅ STATE'i dinliyoruz
+    final state = ref.watch(gorevNotifierProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -82,63 +42,74 @@ class _GorevListesiState extends State<GorevListesi> {
           style: const TextStyle(fontSize: 24, color: Colors.amber),
         ),
       ),
+      backgroundColor: Colors.deepPurple[50],
+
+      // ✅ FAB: Yeni Ekleme
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'gorev_listesi_fab',
+        backgroundColor: const Color.fromARGB(255, 78, 18, 92),
+        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              // Parametre göndermiyoruz, AddEdit sayfası kendi DI'ını kullanıyor
+              builder: (context) => const GorevAddEdit(),
+            ),
+          );
+          // Geri dönünce listeyi güncelle
+          ref.read(gorevNotifierProvider.notifier).loadGorevler();
+        },
+      ),
+
+      // ✅ GÖVDE: State durumuna göre
       body: Center(
-        child: isLoading
+        child: state.isLoading
             ? const CircularProgressIndicator()
-            : gorevList.isEmpty
+            : state.gorevler.isEmpty
                 ? Text(
                     '${local.translate('general_anyMessage')} ${local.translate('general_missionJob')} ${local.translate('general_notFound')}',
                     style: const TextStyle(
                       color: Colors.red,
                       fontSize: 24,
                     ),
+                    textAlign: TextAlign.center,
                   )
-                : buildGorevler(),
-      ),
-      backgroundColor: Colors.deepPurple[50],
-      floatingActionButton: FloatingActionButton(
-         heroTag: 'gorev_listesi_fab', // ← benzersiz heroTag ekledik
-        backgroundColor: const Color.fromARGB(255, 78, 18, 92),
-        child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => GorevAddEdit(
-                createGorevUseCase: _createGorevUseCase,
-                updateGorevUseCase: _updateGorevUseCase,
-                getAllKategoriUseCase: _getAllKategoriUseCase,
-                getAllOncelikUseCase: _getAllOncelikUseCase,
-              ),
-            ),
-          );
-          refreshGorevler();
-        },
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      await ref
+                          .read(gorevNotifierProvider.notifier)
+                          .loadGorevler();
+                    },
+                    child: SingleChildScrollView(
+                      child: StaggeredGrid.count(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 2,
+                        crossAxisSpacing: 2,
+                        children: List.generate(
+                          state.gorevler.length,
+                          (index) {
+                            final gorev = state.gorevler[index];
+                            return GestureDetector(
+                              onTap: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        GorevDetail(gorevId: gorev.id!),
+                                  ),
+                                );
+                                // Detaydan dönünce listeyi güncelle
+                                ref
+                                    .read(gorevNotifierProvider.notifier)
+                                    .loadGorevler();
+                              },
+                              child: GorevCard(gorev: gorev),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
       ),
     );
   }
-
-  Widget buildGorevler() => SingleChildScrollView(
-        child: StaggeredGrid.count(
-          crossAxisCount: 2,
-          mainAxisSpacing: 2,
-          crossAxisSpacing: 2,
-          children: List.generate(
-            gorevList.length,
-            (index) {
-              final gorev = gorevList[index];
-              return GestureDetector(
-                onTap: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => GorevDetail(gorevId: gorev.id!),
-                    ),
-                  );
-                  refreshGorevler();
-                },
-                child: GorevCard(gorev: gorev),
-              );
-            },
-          ),
-        ),
-      );
 }

@@ -7,19 +7,16 @@ import '../../../domain/entities/not.dart';
 import '../../../domain/usecases/kategori/get_kategori_by_id.dart';
 import '../../../domain/usecases/oncelik/get_oncelik_by_id.dart';
 
-/// 🗒️ NOT KARTI BİLEŞENİ
-/// - Not bilgilerini renkli kart olarak gösterir.
-/// - Kategori ve Öncelik bilgilerini asenkron olarak yükler.
+// DI Container
+import '../../../../core/di/injection_container.dart'; // sl için gerekli
+
 class NotCard extends StatefulWidget {
   final Not not;
-  final GetKategoriById getKategoriById;
-  final GetOncelikById getOncelikById;
 
+  // Constructor'dan UseCase'leri kaldırdık
   const NotCard({
     super.key,
     required this.not,
-    required this.getKategoriById,
-    required this.getOncelikById,
   });
 
   @override
@@ -28,6 +25,10 @@ class NotCard extends StatefulWidget {
 
 class _NotCardState extends State<NotCard> {
   late Future<Map<String, dynamic>> _cardData;
+
+  // UseCase'leri burada tanımlıyoruz
+  final GetKategoriById _getKategoriById = sl<GetKategoriById>();
+  final GetOncelikById _getOncelikById = sl<GetOncelikById>();
 
   @override
   void initState() {
@@ -38,7 +39,6 @@ class _NotCardState extends State<NotCard> {
   @override
   void didUpdateWidget(covariant NotCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Eğer not değişirse Future yeniden hesaplanır
     if (oldWidget.not.id != widget.not.id) {
       _cardData = _loadCardData();
     }
@@ -79,8 +79,9 @@ class _NotCardState extends State<NotCard> {
 
   Future<Map<String, dynamic>> _loadCardData() async {
     try {
-      final kategori = await widget.getKategoriById(widget.not.kategoriId);
-      final oncelik = await widget.getOncelikById(widget.not.oncelikId);
+      // UseCase'leri local değişkenlerden kullanıyoruz
+      final kategori = await _getKategoriById(widget.not.kategoriId);
+      final oncelik = await _getOncelikById(widget.not.oncelikId);
 
       final color = ColorHelper.hexToColor(oncelik?.renkKodu ?? '#CCCCCC');
 
@@ -118,7 +119,6 @@ class _NotCardState extends State<NotCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Üst Satır: Kategori & Öncelik
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -139,8 +139,6 @@ class _NotCardState extends State<NotCard> {
               ],
             ),
             const SizedBox(height: 6),
-
-            // Başlık
             Text(
               not.baslik,
               style: const TextStyle(
@@ -152,8 +150,6 @@ class _NotCardState extends State<NotCard> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 6),
-
-            // Açıklama
             Text(
               not.aciklama,
               style: const TextStyle(
@@ -164,8 +160,6 @@ class _NotCardState extends State<NotCard> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
-
-            // Tarih
             Align(
               alignment: Alignment.bottomRight,
               child: Text(

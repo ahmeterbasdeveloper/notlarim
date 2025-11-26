@@ -8,13 +8,9 @@ import '../../../../domain/entities/kategori.dart';
 import '../../../../domain/usecases/kategori/get_kategori_by_id.dart';
 import '../../../../domain/usecases/kategori/delete_kategori.dart';
 
-// Data
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
+// DI
+import '../../../../core/di/injection_container.dart';
 
-
-/// 🧱 Kategori detay sayfası.
-/// Clean Architecture — Entity & UseCase tabanlı yapı.
 class KategoriDetail extends StatefulWidget {
   final int kategoriId;
 
@@ -28,17 +24,13 @@ class _KategoriDetailState extends State<KategoriDetail> {
   Kategori? kategori;
   bool isLoading = false;
 
-  late final GetKategoriById _getKategoriByIdUseCase;
-  late final DeleteKategori _deleteKategoriUseCase;
+  // ✅ UseCase'ler DI'dan
+  final GetKategoriById _getKategoriByIdUseCase = sl<GetKategoriById>();
+  final DeleteKategori _deleteKategoriUseCase = sl<DeleteKategori>();
 
   @override
   void initState() {
     super.initState();
-
-    final repository = KategoriRepositoryImpl(DatabaseHelper.instance);
-    _getKategoriByIdUseCase = GetKategoriById(repository);
-    _deleteKategoriUseCase = DeleteKategori(repository);
-
     _refreshKategori();
   }
 

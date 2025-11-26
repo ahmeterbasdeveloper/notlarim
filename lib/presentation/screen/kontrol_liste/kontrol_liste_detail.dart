@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:notlarim/localization/localization.dart';
 import '../../../core/config/app_config.dart';
 
-// 🧠 Domain & UseCases
+// Domain
 import '../../../domain/entities/kontrol_liste.dart';
 import '../../../domain/usecases/kontrol_liste/get_kontrol_liste_by_id.dart';
 import '../../../domain/usecases/kontrol_liste/delete_kontrol_liste.dart';
 
-// 💾 Data katmanı
-import '../../../data/datasources/database_helper.dart';
-import '../../../data/repositories/kontrol_liste_repository_impl.dart';
+// DI
+import '../../../core/di/injection_container.dart';
 
-// 📱 Presentation
+// UI
 import 'kontrol_liste_add_edit.dart';
 
 class KontrolListeDetail extends StatefulWidget {
@@ -27,10 +26,10 @@ class KontrolListeDetail extends StatefulWidget {
 }
 
 class _KontrolListeDetailState extends State<KontrolListeDetail> {
-  late final _repository =
-      KontrolListeRepositoryImpl(DatabaseHelper.instance);
-  late final _getKontrolListeById = GetKontrolListeById(_repository);
-  late final _deleteKontrolListe = DeleteKontrolListe(_repository);
+  // ✅ UseCase'ler DI'dan
+  late final GetKontrolListeById _getKontrolListeById =
+      sl<GetKontrolListeById>();
+  late final DeleteKontrolListe _deleteKontrolListe = sl<DeleteKontrolListe>();
 
   KontrolListe? kontrolListe;
   bool isLoading = false;
@@ -48,11 +47,13 @@ class _KontrolListeDetailState extends State<KontrolListeDetail> {
       setState(() => kontrolListe = data);
     } catch (e) {
       debugPrint("Kontrol listesi yüklenirken hata oluştu: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Veri yüklenemedi: $e")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Veri yüklenemedi: $e")),
+        );
+      }
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -105,16 +106,13 @@ class _KontrolListeDetailState extends State<KontrolListeDetail> {
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
-          _buildLabel(
-              AppLocalizations.of(context).translate('general_title')),
+          _buildLabel(AppLocalizations.of(context).translate('general_title')),
           _buildValue(k.baslik, isBold: true),
           const SizedBox(height: 12),
-
           _buildLabel(
               AppLocalizations.of(context).translate('general_explanation')),
           _buildValue(k.aciklama),
           const SizedBox(height: 12),
-
           _buildLabel(AppLocalizations.of(context)
               .translate('general_registrationDate')),
           _buildValue(dateText),
@@ -172,8 +170,8 @@ class _KontrolListeDetailState extends State<KontrolListeDetail> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child:
-                      Text(AppLocalizations.of(context).translate('general_no')),
+                  child: Text(
+                      AppLocalizations.of(context).translate('general_no')),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, true),

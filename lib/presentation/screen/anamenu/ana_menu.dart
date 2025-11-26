@@ -1,81 +1,48 @@
 import 'package:flutter/material.dart';
-import 'package:notlarim/presentation/screen/notlar/not_add_edit.dart';
-import 'package:notlarim/presentation/screen/oncelik/oncelik_listesi.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../data/datasources/database_backup_restore.dart';
 import '../../../localization/localization.dart';
 import '../../../main.dart';
 
+// Providers
+import '../notlar/providers/not_providers.dart';
+import '../durum/providers/durum_providers.dart';
+import '../kategori/providers/kategori_providers.dart';
+import '../kontrol_liste/providers/kontrol_liste_providers.dart';
+import '../oncelik/providers/oncelik_providers.dart';
+import '../hatirlatici/providers/hatirlatici_providers.dart'; // ✅ Eklendi
+
 // Screens
+import 'package:notlarim/presentation/screen/notlar/not_add_edit.dart';
+import 'package:notlarim/presentation/screen/oncelik/oncelik_listesi.dart';
 import '../backup/backup_manager_screen.dart';
 import '../durum/durum_listesi.dart';
 import '../kategori/kategori_listesi.dart';
 import '../kullanimklavuzu/kullanimklavuzu.dart';
 import '../notlar/not_listesi.dart';
 import '../kontrol_liste/kontrol_liste_listesi.dart';
+import '../hatirlatici/hatirlatici_listesi.dart'; // ✅ Eklendi
 
-// ✅ EKLENDİ: Abstract Interface
-import '../../../core/abstract_db_service.dart';
-
-// UseCases & Repositories
-import '../../../data/datasources/database_helper.dart';
-import '../../../data/repositories/not_repository_impl.dart';
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/repositories/oncelik_repository_impl.dart';
-import '../../../domain/usecases/not/get_all_not.dart';
-import '../../../domain/usecases/not/create_not.dart';
-import '../../../domain/usecases/not/update_not.dart';
-import '../../../domain/usecases/kategori/get_all_kategori.dart';
-import '../../../domain/usecases/oncelik/get_all_oncelik.dart';
-
-class AnaMenuMenuScreen extends StatefulWidget {
+class AnaMenuMenuScreen extends ConsumerStatefulWidget {
   const AnaMenuMenuScreen({super.key});
 
   @override
-  State<AnaMenuMenuScreen> createState() => _AnaMenuMenuScreenState();
+  ConsumerState<AnaMenuMenuScreen> createState() => _AnaMenuMenuScreenState();
 }
 
-class _AnaMenuMenuScreenState extends State<AnaMenuMenuScreen> {
-  late Widget _currentWidget;
+class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
   int _selectedIndex = 0;
 
-  // UseCases
-  late final GetAllNot _getAllNotUseCase;
-  late final CreateNot _createNotUseCase;
-  late final UpdateNot _updateNotUseCase;
-  late final GetAllKategori _getAllKategoriUseCase;
-  late final GetAllOncelik _getAllOncelikUseCase;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupUseCases();
-    // İlk açılışta Not Listesini yükle
-    _currentWidget = const NotListesi();
-  }
-
-  void _setupUseCases() {
-    // ✅ DÜZELTİLDİ: Singleton instance'ı 'AbstractDBService' olarak alıyoruz.
-    // Repository'ler constructor'larında bu tipi bekliyor.
-    final AbstractDBService dbService = DatabaseHelper.instance;
-
-    // Repository'lere 'dbService' gönderiyoruz
-    final kategoriRepo = KategoriRepositoryImpl(dbService);
-    final oncelikRepo = OncelikRepositoryImpl(dbService);
-
-    final notRepo = NotRepositoryImpl(
-      dbService,
-      kategoriRepository: kategoriRepo,
-      oncelikRepository: oncelikRepo,
-    );
-
-    // UseCase'leri oluşturuyoruz
-    _getAllNotUseCase = GetAllNot(notRepo);
-    _createNotUseCase = CreateNot(notRepo);
-    _updateNotUseCase = UpdateNot(notRepo);
-    _getAllKategoriUseCase = GetAllKategori(kategoriRepo);
-    _getAllOncelikUseCase = GetAllOncelik(oncelikRepo);
-  }
+  // 🚨 DEĞİŞİKLİK: Hatırlatıcı sayfası listeye eklendi (index 5)
+  final List<Widget> _pages = const [
+    NotListesi(), // 0
+    KategoriListesi(), // 1
+    DurumListesi(), // 2
+    OncelikListesi(), // 3
+    KontrolListeListesi(), // 4
+    HatirlaticiListesi(), // 5 ✅
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -89,32 +56,33 @@ class _AnaMenuMenuScreenState extends State<AnaMenuMenuScreen> {
           _buildLanguageMenu(loc),
         ],
       ),
-      // body: _currentWidget, // Doğrudan widget kullanımı yerine Key ile yenilemeyi garanti edebiliriz (opsiyonel)
-      body: _currentWidget,
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
       drawer: _buildDrawer(context),
-      floatingActionButton: _selectedIndex == 0
-          ? FloatingActionButton(
-              backgroundColor: const Color.fromARGB(255, 78, 18, 92),
-              child: const Icon(Icons.add, color: Colors.white),
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => NotAddEdit(
-                      createNotUseCase: _createNotUseCase,
-                      updateNotUseCase: _updateNotUseCase,
-                      getAllKategoriUseCase: _getAllKategoriUseCase,
-                      getAllOncelikUseCase: _getAllOncelikUseCase,
-                    ),
-                  ),
-                );
-                _refreshCurrentWidget();
-              },
-            )
-          : null,
+      floatingActionButton: _buildFab(loc),
     );
   }
 
-  // Drawer
+  Widget? _buildFab(AppLocalizations loc) {
+    // Sadece Not Listesi açıkken FAB göster
+    if (_selectedIndex != 0) return null;
+
+    return FloatingActionButton(
+      backgroundColor: const Color.fromARGB(255, 78, 18, 92),
+      child: const Icon(Icons.add, color: Colors.white),
+      onPressed: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const NotAddEdit(),
+          ),
+        );
+        ref.invalidate(notNotifierProvider);
+      },
+    );
+  }
+
   Drawer _buildDrawer(BuildContext context) {
     final loc = AppLocalizations.of(context);
 
@@ -129,38 +97,64 @@ class _AnaMenuMenuScreenState extends State<AnaMenuMenuScreen> {
               style: const TextStyle(color: Colors.white, fontSize: 24),
             ),
           ),
-          _drawerItem(
-              Icons.list, loc.translate('menu_notes'), const NotListesi(), 0),
-          _drawerItem(Icons.category, loc.translate('menu_categories'),
-              const KategoriListesi(), 1),
-          _drawerItem(Icons.list_alt, loc.translate('menu_situations'),
-              const DurumListesi(), 2),
-          _drawerItem(Icons.priority_high, loc.translate('menu_priorities'),
-              const OncelikListesi(), 3),
-          _drawerItem(Icons.checklist, loc.translate('menu_checklists'),
-              const KontrolListeListesi(), 4),
+          // 📌 0: Notlar
+          _drawerItem(Icons.list, loc.translate('menu_notes'), 0),
+          // 📌 1: Kategoriler
+          _drawerItem(Icons.category, loc.translate('menu_categories'), 1),
+          // 📌 2: Durumlar
+          _drawerItem(Icons.list_alt, loc.translate('menu_situations'), 2),
+          // 📌 3: Öncelikler
+          _drawerItem(Icons.priority_high, loc.translate('menu_priorities'), 3),
+          // 📌 4: Kontrol Listesi
+          _drawerItem(Icons.checklist, loc.translate('menu_checklists'), 4),
+          // 📌 5: Hatırlatıcı (YENİ EKLENDİ)
+          _drawerItem(Icons.alarm, loc.translate('general_reminder'), 5),
+
           const Divider(),
         ],
       ),
     );
   }
 
-  ListTile _drawerItem(
-      IconData icon, String title, Widget page, int selectedIndex) {
+  ListTile _drawerItem(IconData icon, String title, int index) {
     return ListTile(
       leading: Icon(icon, color: Colors.black87),
       title: Text(title),
+      selected: _selectedIndex == index,
+      selectedTileColor: Colors.grey.shade200,
       onTap: () {
         Navigator.pop(context);
         setState(() {
-          _loadWidget(page);
-          _selectedIndex = selectedIndex;
+          _selectedIndex = index;
         });
+        _refreshPageData(index);
       },
     );
   }
 
-  // Popup Menüler
+  void _refreshPageData(int index) {
+    switch (index) {
+      case 0:
+        ref.invalidate(notNotifierProvider);
+        break;
+      case 1:
+        ref.invalidate(kategoriNotifierProvider);
+        break;
+      case 2:
+        ref.invalidate(durumNotifierProvider);
+        break;
+      case 3:
+        ref.invalidate(oncelikNotifierProvider);
+        break;
+      case 4:
+        ref.invalidate(kontrolListeNotifierProvider);
+        break;
+      case 5:
+        ref.invalidate(hatirlaticiNotifierProvider); // ✅ Hatırlatıcı yenileme
+        break;
+    }
+  }
+
   PopupMenuButton<String> _buildMainMenu(AppLocalizations loc) {
     return PopupMenuButton<String>(
       onSelected: (String result) async {
@@ -245,14 +239,6 @@ class _AnaMenuMenuScreenState extends State<AnaMenuMenuScreen> {
     );
   }
 
-  // Widget yükleme (UniqueKey ekleyerek sayfanın sıfırdan oluşmasını sağlıyoruz)
-  void _loadWidget(Widget widget) {
-    _currentWidget = widget;
-    // Eğer widget stateful ise ve key alıyorsa, yeni bir key vermek rebuild tetikler.
-    // Ancak _currentWidget değişimini setState içinde yapmak gerekir (aşağıda yapılıyor).
-  }
-
-  // Kullanım Kılavuzu
   void _showUserManual(BuildContext context) {
     Navigator.push(
       context,
@@ -260,7 +246,6 @@ class _AnaMenuMenuScreenState extends State<AnaMenuMenuScreen> {
     );
   }
 
-  // Versiyon Bilgisi
   Future<void> _showAppVersion() async {
     final info = await PackageInfo.fromPlatform();
     if (!mounted) return;
@@ -284,7 +269,6 @@ class _AnaMenuMenuScreenState extends State<AnaMenuMenuScreen> {
     );
   }
 
-  // Program Bilgisi
   void _showAppInfo() {
     final loc = AppLocalizations.of(context);
     showDialog(
@@ -444,7 +428,15 @@ class _AnaMenuMenuScreenState extends State<AnaMenuMenuScreen> {
         ),
       );
 
-      if (success) _refreshCurrentWidget();
+      if (success) {
+        // Tüm listeleri yenile
+        _refreshPageData(0);
+        _refreshPageData(1);
+        _refreshPageData(2);
+        _refreshPageData(3);
+        _refreshPageData(4);
+        _refreshPageData(5);
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -465,31 +457,5 @@ class _AnaMenuMenuScreenState extends State<AnaMenuMenuScreen> {
     if (selectedBackup != null) {
       await _restoreDatabase(selectedBackup);
     }
-  }
-
-  void _refreshCurrentWidget() {
-    setState(() {
-      // UniqueKey kullanarak widget'ın tamamen yeniden oluşturulmasını (rebuild) sağlıyoruz.
-      // Bu sayede liste sayfasındaki initState tekrar çalışır ve veriler yeniden çekilir.
-      switch (_selectedIndex) {
-        case 0:
-          _currentWidget = NotListesi(key: UniqueKey());
-          break;
-        case 1:
-          _currentWidget = KategoriListesi(key: UniqueKey());
-          break;
-        case 2:
-          _currentWidget = DurumListesi(key: UniqueKey());
-          break;
-        case 3:
-          _currentWidget = OncelikListesi(key: UniqueKey());
-          break;
-        case 4:
-          _currentWidget = KontrolListeListesi(key: UniqueKey());
-          break;
-        default:
-          _currentWidget = NotListesi(key: UniqueKey());
-      }
-    });
   }
 }

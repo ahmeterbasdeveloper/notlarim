@@ -5,17 +5,14 @@ import '../../../domain/entities/kontrol_liste.dart';
 import '../../../domain/entities/kategori.dart';
 import '../../../domain/entities/oncelik.dart';
 
-// 🧠 UseCases
+// UseCases
 import '../../../domain/usecases/kontrol_liste/create_kontrol_liste.dart';
 import '../../../domain/usecases/kontrol_liste/update_kontrol_liste.dart';
 import '../../../domain/usecases/kategori/get_all_kategori.dart';
 import '../../../domain/usecases/oncelik/get_all_oncelik.dart';
 
-// 💾 Repositories & DataSources
-import '../../../data/datasources/database_helper.dart';
-import '../../../data/repositories/kontrol_liste_repository_impl.dart';
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/repositories/oncelik_repository_impl.dart';
+// DI
+import '../../../core/di/injection_container.dart';
 
 class KontrolListeAddEdit extends StatefulWidget {
   final KontrolListe? kontrolListe;
@@ -37,15 +34,11 @@ class _KontrolListeAddEditState extends State<KontrolListeAddEdit> {
   late int kategoriId;
   late int oncelikId;
 
-  late final _dbHelper = DatabaseHelper.instance;
-  late final _kategoriRepository = KategoriRepositoryImpl(_dbHelper);
-  late final _oncelikRepository = OncelikRepositoryImpl(_dbHelper);
-  late final _kontrolListeRepository = KontrolListeRepositoryImpl(_dbHelper);
-
-  late final _getAllKategori = GetAllKategori(_kategoriRepository);
-  late final _getAllOncelik = GetAllOncelik(_oncelikRepository);
-  late final _createKontrolListe = CreateKontrolListe(_kontrolListeRepository);
-  late final _updateKontrolListe = UpdateKontrolListe(_kontrolListeRepository);
+  // ✅ UseCase'ler DI'dan
+  late final GetAllKategori _getAllKategori = sl<GetAllKategori>();
+  late final GetAllOncelik _getAllOncelik = sl<GetAllOncelik>();
+  late final CreateKontrolListe _createKontrolListe = sl<CreateKontrolListe>();
+  late final UpdateKontrolListe _updateKontrolListe = sl<UpdateKontrolListe>();
 
   List<Kategori> kategoriler = [];
   List<Oncelik> oncelikler = [];
@@ -63,12 +56,25 @@ class _KontrolListeAddEditState extends State<KontrolListeAddEdit> {
   }
 
   Future<void> _fetchData() async {
-    final kategoriList = await _getAllKategori();
-    final oncelikList = await _getAllOncelik();
-    setState(() {
-      kategoriler = kategoriList;
-      oncelikler = oncelikList;
-    });
+    try {
+      final kategoriList = await _getAllKategori();
+      final oncelikList = await _getAllOncelik();
+
+      if (mounted) {
+        setState(() {
+          kategoriler = kategoriList;
+          oncelikler = oncelikList;
+
+          // Eğer yeni kayıt ise ve liste boş değilse ilk değerleri ata
+          if (widget.kontrolListe == null) {
+            if (kategoriler.isNotEmpty) kategoriId = kategoriler.first.id!;
+            if (oncelikler.isNotEmpty) oncelikId = oncelikler.first.id!;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Dropdown verileri yüklenemedi: $e");
+    }
   }
 
   @override
@@ -111,10 +117,14 @@ class _KontrolListeAddEditState extends State<KontrolListeAddEdit> {
         ),
       );
 
-  // 🟢 Kategori Dropdown
   Widget _buildKategoriDropdown() {
+    // Veriler henüz yüklenmediyse veya liste boşsa
+    if (kategoriler.isEmpty) {
+      return const SizedBox.shrink(); // veya Loading göster
+    }
+
     return DropdownButtonFormField<int>(
-      initialValue: kategoriId == 0 ? null : kategoriId,
+      value: kategoriId == 0 ? null : kategoriId,
       items: kategoriler.map((kategori) {
         return DropdownMenuItem<int>(
           value: kategori.id,
@@ -131,10 +141,13 @@ class _KontrolListeAddEditState extends State<KontrolListeAddEdit> {
     );
   }
 
-  // 🟡 Öncelik Dropdown
   Widget _buildOncelikDropdown() {
+    if (oncelikler.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return DropdownButtonFormField<int>(
-      initialValue: oncelikId == 0 ? null : oncelikId,
+      value: oncelikId == 0 ? null : oncelikId,
       items: oncelikler.map((oncelik) {
         return DropdownMenuItem<int>(
           value: oncelik.id,
@@ -151,7 +164,6 @@ class _KontrolListeAddEditState extends State<KontrolListeAddEdit> {
     );
   }
 
-  // 🟠 Başlık alanı
   Widget _buildBaslik() => TextFormField(
         maxLines: 1,
         initialValue: baslik,
@@ -162,19 +174,17 @@ class _KontrolListeAddEditState extends State<KontrolListeAddEdit> {
         ),
         decoration: InputDecoration(
           border: const OutlineInputBorder(),
-          labelText:
-              AppLocalizations.of(context).translate('general_title'),
+          labelText: AppLocalizations.of(context).translate('general_title'),
           hintText:
               AppLocalizations.of(context).translate('general_enterTitle'),
         ),
         validator: (value) => (value == null || value.isEmpty)
             ? '${AppLocalizations.of(context).translate('general_title')} '
-              '${AppLocalizations.of(context).translate('general_notEmpty')}'
+                '${AppLocalizations.of(context).translate('general_notEmpty')}'
             : null,
         onChanged: (value) => setState(() => baslik = value),
       );
 
-  // 🔵 Açıklama alanı
   Widget _buildAciklama() => TextFormField(
         maxLines: 5,
         initialValue: aciklama,
@@ -188,12 +198,11 @@ class _KontrolListeAddEditState extends State<KontrolListeAddEdit> {
         ),
         validator: (value) => (value == null || value.isEmpty)
             ? '${AppLocalizations.of(context).translate('general_explanation')} '
-              '${AppLocalizations.of(context).translate('general_notEmpty')}'
+                '${AppLocalizations.of(context).translate('general_notEmpty')}'
             : null,
         onChanged: (value) => setState(() => aciklama = value),
       );
 
-  // 💾 Kaydet butonu
   Widget _buildButton() {
     final isFormValid = baslik.isNotEmpty && aciklama.isNotEmpty;
 
@@ -225,17 +234,19 @@ class _KontrolListeAddEditState extends State<KontrolListeAddEdit> {
       oncelikId: oncelikId,
       baslik: baslik,
       aciklama: aciklama,
-      kayitZamani:
-          widget.kontrolListe?.kayitZamani ?? DateTime.now(),
+      kayitZamani: widget.kontrolListe?.kayitZamani ?? DateTime.now(),
       durumId: 1,
     );
 
-    if (isEditing) {
-      await _updateKontrolListe(entity);
-    } else {
-      await _createKontrolListe(entity);
+    try {
+      if (isEditing) {
+        await _updateKontrolListe(entity);
+      } else {
+        await _createKontrolListe(entity);
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      debugPrint('Kayıt hatası: $e');
     }
-
-    if (mounted) Navigator.pop(context, true);
   }
 }

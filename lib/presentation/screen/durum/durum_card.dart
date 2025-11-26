@@ -15,9 +15,14 @@ class DurumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(
-      int.parse(durum.renkKodu.substring(1), radix: 16),
-    ).withAlpha(255);
+    Color color;
+    try {
+      // Renk kodunu güvenli çevir (Örn: #AABBCC -> 0xFFAABBCC)
+      final hexCode = durum.renkKodu.replaceAll('#', '');
+      color = Color(int.parse('FF$hexCode', radix: 16));
+    } catch (e) {
+      color = Colors.grey; // Hata olursa varsayılan renk
+    }
 
     final local = AppLocalizations.of(context);
 

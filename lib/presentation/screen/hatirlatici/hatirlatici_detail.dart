@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:notlarim/domain/entities/hatirlatici.dart';
 import 'package:notlarim/domain/usecases/hatirlatici/get_hatirlatici_by_id.dart';
 import 'package:notlarim/domain/usecases/hatirlatici/delete_hatirlatici.dart';
-import 'package:notlarim/domain/usecases/hatirlatici/create_hatirlatici.dart';
-import 'package:notlarim/domain/usecases/hatirlatici/update_hatirlatici.dart';
-import 'package:notlarim/domain/usecases/kategori/get_all_kategori.dart';
-import 'package:notlarim/domain/usecases/oncelik/get_all_oncelik.dart';
 import 'package:notlarim/localization/localization.dart';
+
+// DI
+import '../../../../core/di/injection_container.dart';
 
 import '../../../core/config/app_config.dart';
 import 'hatirlatici_add_edit.dart';
@@ -15,23 +14,9 @@ import 'hatirlatici_add_edit.dart';
 class HatirlaticiDetail extends StatefulWidget {
   final int hatirlaticiId;
 
-  /// UseCase'ler
-  final GetHatirlaticiById getHatirlaticiByIdUseCase;
-  final DeleteHatirlatici deleteHatirlaticiUseCase;
-  final CreateHatirlatici createHatirlaticiUseCase;
-  final UpdateHatirlatici updateHatirlaticiUseCase;
-  final GetAllKategori getAllKategoriUseCase;
-  final GetAllOncelik getAllOncelikUseCase;
-
   const HatirlaticiDetail({
     super.key,
     required this.hatirlaticiId,
-    required this.getHatirlaticiByIdUseCase,
-    required this.deleteHatirlaticiUseCase,
-    required this.createHatirlaticiUseCase,
-    required this.updateHatirlaticiUseCase,
-    required this.getAllKategoriUseCase,
-    required this.getAllOncelikUseCase,
   });
 
   @override
@@ -42,6 +27,11 @@ class _HatirlaticiDetailState extends State<HatirlaticiDetail> {
   Hatirlatici? _hatirlatici;
   bool _isLoading = false;
   String? _errorMessage;
+
+  // ✅ UseCase'ler DI'dan
+  final GetHatirlaticiById _getHatirlaticiByIdUseCase =
+      sl<GetHatirlaticiById>();
+  final DeleteHatirlatici _deleteHatirlaticiUseCase = sl<DeleteHatirlatici>();
 
   @override
   void initState() {
@@ -57,7 +47,7 @@ class _HatirlaticiDetailState extends State<HatirlaticiDetail> {
     });
 
     try {
-      final result = await widget.getHatirlaticiByIdUseCase(widget.hatirlaticiId);
+      final result = await _getHatirlaticiByIdUseCase(widget.hatirlaticiId);
       if (!mounted) return;
       setState(() => _hatirlatici = result);
     } catch (e) {
@@ -131,11 +121,14 @@ class _HatirlaticiDetailState extends State<HatirlaticiDetail> {
         children: [
           _buildDetailRow(loc.translate('general_title'), hatirlatici.baslik),
           const SizedBox(height: 12),
-          _buildDetailRow(loc.translate('general_explanation'), hatirlatici.aciklama),
+          _buildDetailRow(
+              loc.translate('general_explanation'), hatirlatici.aciklama),
           const SizedBox(height: 12),
-          _buildDetailRow(loc.translate('general_category'), hatirlatici.kategoriId.toString()),
+          _buildDetailRow(loc.translate('general_category'),
+              hatirlatici.kategoriId.toString()),
           const SizedBox(height: 12),
-          _buildDetailRow(loc.translate('general_priority'), hatirlatici.oncelikId.toString()),
+          _buildDetailRow(loc.translate('general_priority'),
+              hatirlatici.oncelikId.toString()),
           const SizedBox(height: 12),
           _buildDetailRow(
             loc.translate('general_reminderDate'),
@@ -187,10 +180,6 @@ class _HatirlaticiDetailState extends State<HatirlaticiDetail> {
           final result = await Navigator.of(context).push(MaterialPageRoute(
             builder: (context) => HatirlaticiAddEdit(
               hatirlatici: _hatirlatici!,
-              createHatirlaticiUseCase: widget.createHatirlaticiUseCase,
-              updateHatirlaticiUseCase: widget.updateHatirlaticiUseCase,
-              getAllKategoriUseCase: widget.getAllKategoriUseCase,
-              getAllOncelikUseCase: widget.getAllOncelikUseCase,
             ),
           ));
 
@@ -208,16 +197,20 @@ class _HatirlaticiDetailState extends State<HatirlaticiDetail> {
           final confirmed = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              title: Text(AppLocalizations.of(context).translate('general_deleteConfirm')),
-              content: Text(AppLocalizations.of(context).translate('general_deleteQuestion')),
+              title: Text(AppLocalizations.of(context)
+                  .translate('general_deleteConfirm')),
+              content: Text(AppLocalizations.of(context)
+                  .translate('general_deleteQuestion')),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: Text(AppLocalizations.of(context).translate('general_no')),
+                  child: Text(
+                      AppLocalizations.of(context).translate('general_no')),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: Text(AppLocalizations.of(context).translate('general_yes')),
+                  child: Text(
+                      AppLocalizations.of(context).translate('general_yes')),
                 ),
               ],
             ),
@@ -225,13 +218,14 @@ class _HatirlaticiDetailState extends State<HatirlaticiDetail> {
 
           if (confirmed == true) {
             try {
-              await widget.deleteHatirlaticiUseCase(_hatirlatici!.id!);
+              await _deleteHatirlaticiUseCase(_hatirlatici!.id!);
               if (mounted) {
                 Navigator.of(context).pop(true);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      AppLocalizations.of(context).translate('general_deletedSuccessfully'),
+                      AppLocalizations.of(context)
+                          .translate('general_deletedSuccessfully'),
                     ),
                     backgroundColor: Colors.green.shade700,
                     duration: const Duration(seconds: 2),

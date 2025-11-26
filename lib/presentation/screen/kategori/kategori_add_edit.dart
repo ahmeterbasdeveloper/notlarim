@@ -10,9 +10,8 @@ import '../../../domain/entities/kategori.dart';
 import '../../../domain/usecases/kategori/create_kategori.dart';
 import '../../../domain/usecases/kategori/update_kategori.dart';
 
-// Data
-import '../../../data/repositories/kategori_repository_impl.dart';
-import '../../../data/datasources/database_helper.dart';
+// DI
+import '../../../core/di/injection_container.dart';
 
 class AddEditKategori extends StatefulWidget {
   final Kategori? kategori;
@@ -31,16 +30,13 @@ class _AddEditKategoriState extends State<AddEditKategori> {
   late String renkKodu;
   late Color selectedColor;
 
-  late final CreateKategori _createKategoriUseCase;
-  late final UpdateKategori _updateKategoriUseCase;
+  // ✅ UseCase'leri DI'dan çekiyoruz
+  final CreateKategori _createKategoriUseCase = sl<CreateKategori>();
+  final UpdateKategori _updateKategoriUseCase = sl<UpdateKategori>();
 
   @override
   void initState() {
     super.initState();
-
-    final repo = KategoriRepositoryImpl(DatabaseHelper.instance);
-    _createKategoriUseCase = CreateKategori(repo);
-    _updateKategoriUseCase = UpdateKategori(repo);
 
     baslik = widget.kategori?.baslik ?? '';
     aciklama = widget.kategori?.aciklama ?? '';
@@ -59,7 +55,8 @@ class _AddEditKategoriState extends State<AddEditKategori> {
       appBar: AppBar(
         title: Text(
           '${local.translate('general_categori')} ${isEditing ? local.translate('general_update') : local.translate('general_add')}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.amber),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 20, color: Colors.amber),
         ),
         backgroundColor: Colors.green.shade900,
         leading: IconButton(
@@ -101,7 +98,8 @@ class _AddEditKategoriState extends State<AddEditKategori> {
           border: const OutlineInputBorder(),
           labelText: local.translate('general_title'),
         ),
-        validator: (v) => v == null || v.isEmpty ? local.translate('general_notEmpty') : null,
+        validator: (v) =>
+            v == null || v.isEmpty ? local.translate('general_notEmpty') : null,
         onChanged: (v) => baslik = v,
       );
 
@@ -112,7 +110,8 @@ class _AddEditKategoriState extends State<AddEditKategori> {
           border: const OutlineInputBorder(),
           labelText: local.translate('general_explanation'),
         ),
-        validator: (v) => v == null || v.isEmpty ? local.translate('general_notEmpty') : null,
+        validator: (v) =>
+            v == null || v.isEmpty ? local.translate('general_notEmpty') : null,
         onChanged: (v) => aciklama = v,
       );
 
@@ -147,17 +146,20 @@ class _AddEditKategoriState extends State<AddEditKategori> {
   }
 
   Widget _buildKaydetButton(AppLocalizations local, bool isEditing) {
-    final isFormValid = baslik.isNotEmpty && aciklama.isNotEmpty && renkKodu.isNotEmpty;
+    final isFormValid =
+        baslik.isNotEmpty && aciklama.isNotEmpty && renkKodu.isNotEmpty;
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: isFormValid ? Colors.indigo.shade600 : Colors.blueGrey.shade700,
+        backgroundColor:
+            isFormValid ? Colors.indigo.shade600 : Colors.blueGrey.shade700,
         minimumSize: const Size(double.infinity, 48),
       ),
       onPressed: _saveKategori,
       child: Text(
         local.translate('general_save'),
-        style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -196,7 +198,8 @@ class _AddEditKategoriState extends State<AddEditKategori> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(AppLocalizations.of(context).translate('general_chooseColorMessage')),
+        title: Text(AppLocalizations.of(context)
+            .translate('general_chooseColorMessage')),
         content: SingleChildScrollView(
           child: ColorPicker(
             pickerColor: selectedColor,

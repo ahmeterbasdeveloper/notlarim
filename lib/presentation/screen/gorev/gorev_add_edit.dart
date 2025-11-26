@@ -1,31 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:notlarim/domain/usecases/kategori/get_all_kategori.dart';
-import 'package:notlarim/domain/usecases/oncelik/get_all_oncelik.dart';
 import 'package:notlarim/localization/localization.dart';
 
 // Domain
 import '../../../../domain/entities/gorev.dart';
 import '../../../../domain/usecases/gorev/create_gorev.dart';
 import '../../../../domain/usecases/gorev/update_gorev.dart';
+import '../../../../domain/usecases/kategori/get_all_kategori.dart';
+import '../../../../domain/usecases/oncelik/get_all_oncelik.dart';
+
+// DI
+import '../../../../core/di/injection_container.dart';
 
 // UI
 import 'gorev_form.dart';
 
-/// 🧱 Görev Ekle / Güncelle Ekranı — Clean Architecture versiyonu.
 class GorevAddEdit extends StatefulWidget {
   final Gorev? gorev;
-  final CreateGorev createGorevUseCase;
-  final UpdateGorev updateGorevUseCase;
-  final GetAllKategori getAllKategoriUseCase;
-  final GetAllOncelik getAllOncelikUseCase;
 
   const GorevAddEdit({
     super.key,
     this.gorev,
-    required this.createGorevUseCase,
-    required this.updateGorevUseCase,
-    required this.getAllKategoriUseCase,
-    required this.getAllOncelikUseCase,
   });
 
   @override
@@ -42,6 +36,12 @@ class _GorevAddEditState extends State<GorevAddEdit> {
   late int oncelikId;
   late DateTime baslamaTarihiZamani;
   late DateTime bitisTarihiZamani;
+
+  // UseCase'leri DI'dan çekiyoruz
+  final CreateGorev _createGorevUseCase = sl<CreateGorev>();
+  final UpdateGorev _updateGorevUseCase = sl<UpdateGorev>();
+  final GetAllKategori _getAllKategoriUseCase = sl<GetAllKategori>();
+  final GetAllOncelik _getAllOncelikUseCase = sl<GetAllOncelik>();
 
   @override
   void initState() {
@@ -65,7 +65,8 @@ class _GorevAddEditState extends State<GorevAddEdit> {
       appBar: AppBar(
         title: Text(
           '${local.translate('general_missionJob')} ${isUpdating ? local.translate('general_update') : local.translate('general_add')}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.amber),
+          style: const TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 20, color: Colors.amber),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -90,14 +91,17 @@ class _GorevAddEditState extends State<GorevAddEdit> {
                 onChangedAciklama: (v) => setState(() => aciklama = v),
                 onChangedKategori: (v) => setState(() => kategoriId = v),
                 onChangedOncelik: (v) => setState(() => oncelikId = v),
-                onChangedBaslamaTarihiZamani: (v) => setState(() => baslamaTarihiZamani = v),
-                onChangedBitisTarihiZamani: (v) => setState(() => bitisTarihiZamani = v),
-                getAllKategoriUseCase: widget.getAllKategoriUseCase,
-                getAllOncelikUseCase: widget.getAllOncelikUseCase,
+                onChangedBaslamaTarihiZamani: (v) =>
+                    setState(() => baslamaTarihiZamani = v),
+                onChangedBitisTarihiZamani: (v) =>
+                    setState(() => bitisTarihiZamani = v),
+                getAllKategoriUseCase: _getAllKategoriUseCase,
+                getAllOncelikUseCase: _getAllOncelikUseCase,
               ),
               const SizedBox(height: 12),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: baslik.isNotEmpty && aciklama.isNotEmpty
@@ -109,7 +113,10 @@ class _GorevAddEditState extends State<GorevAddEdit> {
                       : null,
                   child: Text(
                     local.translate('general_save'),
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ),
               ),
@@ -136,9 +143,9 @@ class _GorevAddEditState extends State<GorevAddEdit> {
 
     try {
       if (widget.gorev != null) {
-        await widget.updateGorevUseCase(entity);
+        await _updateGorevUseCase(entity);
       } else {
-        await widget.createGorevUseCase(entity);
+        await _createGorevUseCase(entity);
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

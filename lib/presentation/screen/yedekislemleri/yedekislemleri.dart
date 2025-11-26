@@ -24,8 +24,8 @@ class YedekIslemleriWidget {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
-              title: Text(AppLocalizations.of(context)
-                  .translate('database_getBackup')),
+              title: Text(
+                  AppLocalizations.of(context).translate('database_getBackup')),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -52,8 +52,8 @@ class YedekIslemleriWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(AppLocalizations.of(context)
-                      .translate('menu_giveUp')),
+                  child: Text(
+                      AppLocalizations.of(context).translate('menu_giveUp')),
                 ),
                 TextButton(
                   onPressed: isButtonEnabled
@@ -63,8 +63,8 @@ class YedekIslemleriWidget {
                           await _backupDatabase(fileName);
                         }
                       : null,
-                  child: Text(AppLocalizations.of(context)
-                      .translate('menu_yes')),
+                  child:
+                      Text(AppLocalizations.of(context).translate('menu_yes')),
                 ),
               ],
             );
@@ -83,8 +83,8 @@ class YedekIslemleriWidget {
     if (backups.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)
-              .translate('database_noBackupFound')),
+          content: Text(
+              AppLocalizations.of(context).translate('database_noBackupFound')),
           backgroundColor: Colors.orange,
         ),
       );
@@ -128,8 +128,8 @@ class YedekIslemleriWidget {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(AppLocalizations.of(context)
-                      .translate('menu_giveUp')),
+                  child: Text(
+                      AppLocalizations.of(context).translate('menu_giveUp')),
                 ),
                 TextButton(
                   onPressed: selectedFileName != null
@@ -138,8 +138,8 @@ class YedekIslemleriWidget {
                           await _restoreDatabase(selectedFileName!);
                         }
                       : null,
-                  child: Text(AppLocalizations.of(context)
-                      .translate('menu_yes')),
+                  child:
+                      Text(AppLocalizations.of(context).translate('menu_yes')),
                 ),
               ],
             );
@@ -164,8 +164,7 @@ class YedekIslemleriWidget {
                     .translate('database_backupSuccessMessage')
                 : AppLocalizations.of(context)
                     .translate('database_backupErrorMessage')),
-            backgroundColor:
-                backupFile != null ? Colors.green : Colors.red,
+            backgroundColor: backupFile != null ? Colors.green : Colors.red,
           ),
         );
       }

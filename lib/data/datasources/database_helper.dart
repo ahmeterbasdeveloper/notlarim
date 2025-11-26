@@ -7,6 +7,9 @@ import 'package:sqflite/sqflite.dart';
 // 🟢 Soyut arayüzü (interface)
 import '../../core/abstract_db_service.dart';
 
+// Güvenlik Yardımcısı (Şifre Hashleme için)
+import '../../core/utils/security_helper.dart';
+
 // Modeller
 import '../models/hatirlatici_model.dart';
 import '../models/kategori_model.dart';
@@ -24,9 +27,9 @@ class DatabaseHelper implements AbstractDBService {
 
   static const _databaseName = "notlar.db";
 
-  // 🚨 ÖNEMLİ DEĞİŞİKLİK: Versiyonu 2 yaptık.
-  // Bu sayede onUpgrade çalışacak ve tabloları yeniden oluşturup verileri getirecek.
-  static const _databaseVersion = 2;
+  // 🚨 ÖNEMLİ: Hata düzeltildiği için versiyonu 4 yapın ki onUpgrade çalışsın.
+  // Veya uygulamayı silip yükleyecekseniz 3 kalabilir.
+  static const _databaseVersion = 1;
 
   static final DatabaseHelper instance = DatabaseHelper._init();
 
@@ -79,9 +82,8 @@ class DatabaseHelper implements AbstractDBService {
     return await openDatabase(
       path,
       version: _databaseVersion,
-      onCreate: _onCreate, // İlk kurulumda çalışır
-      onUpgrade:
-          _onUpgrade, // Versiyon değişince çalışır (Verileri düzeltmek için)
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onOpen: _onOpen,
     );
   }
@@ -90,11 +92,12 @@ class DatabaseHelper implements AbstractDBService {
     await db.execute('PRAGMA foreign_keys = ON');
   }
 
-  /// 🔄 Versiyon yükseltme işlemi (Veriler gelmiyorsa burası tetiklenir)
+  /// 🔄 Versiyon yükseltme işlemi
   static Future<void> _onUpgrade(
       Database db, int oldVersion, int newVersion) async {
-    if (kDebugMode)
+    if (kDebugMode) {
       print("♻️ Veritabanı güncelleniyor: v$oldVersion -> v$newVersion");
+    }
 
     // Tüm tabloları sil (Temiz başlangıç için)
     await db.execute("DROP TABLE IF EXISTS $tableDurumlar");
@@ -149,6 +152,7 @@ class DatabaseHelper implements AbstractDBService {
       )
     ''');
 
+    // ✅ DÜZELTME BURADA YAPILDI: Eksik kolonlar eklendi
     await db.execute('''
       CREATE TABLE $tableKullanicilar ( 
         ${KullaniciAlanlar.id} $idType, 
@@ -156,6 +160,8 @@ class DatabaseHelper implements AbstractDBService {
         ${KullaniciAlanlar.soyad} $textType,
         ${KullaniciAlanlar.email} $textType,
         ${KullaniciAlanlar.password} $textType,
+        ${KullaniciAlanlar.userName} $textType,
+        ${KullaniciAlanlar.cepTelefon} $textType,
         ${KullaniciAlanlar.fotoUrl} $textType
       )
     ''');
@@ -326,6 +332,20 @@ class DatabaseHelper implements AbstractDBService {
         await txn.insert(tableOncelik, e);
       }
 
+      // 🔹 KULLANICILAR (Şifre Hashlenerek)
+      // Varsayılan bir admin kullanıcısı ekleyelim.
+      final hashedPassword = SecurityHelper.hashPassword('PassW0rd');
+
+      await txn.insert(tableKullanicilar, {
+        'ad': 'Admin',
+        'soyad': 'User',
+        'email': 'admin@gmail.com',
+        'password': hashedPassword,
+        'userName': 'admin',
+        'cepTelefon': '',
+        'fotoUrl': '',
+      });
+
       // 🔹 Örnek Not
       await txn.insert(tableNotlar, {
         'kategoriId': 1,
@@ -338,7 +358,7 @@ class DatabaseHelper implements AbstractDBService {
     });
   }
 
-  /// 📌 Tablo var mı kontrolü (Eski kodlardan kalma, onCreate içinde artık gerek yok ama silmedim)
+  /// 📌 Tablo var mı kontrolü
   static Future<bool> _tableExists(Database db, String tableName) async {
     final result = await db.rawQuery(
       "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
