@@ -1,5 +1,5 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:notlarim/data/datasources/database_helper.dart';
+import 'package:notlarim/core/database/database_helper.dart';
 
 class AppDatabase {
   static final AppDatabase instance = AppDatabase._init();

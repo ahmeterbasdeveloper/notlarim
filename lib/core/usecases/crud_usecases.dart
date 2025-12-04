@@ -1,11 +1,11 @@
 // lib/core/usecases/crud_usecases.dart
 
 import '../base/base_entity.dart';
-import '../../domain/repositories/base_repository.dart';
+import '../base/crud_repository.dart';
 
 // 1. GET ALL (Hepsini Getir)
 class GetAllUseCase<T extends BaseEntity> {
-  final BaseRepository<T> repository;
+  final CrudRepository<T> repository;
 
   GetAllUseCase(this.repository);
 
@@ -16,7 +16,7 @@ class GetAllUseCase<T extends BaseEntity> {
 
 // 2. GET BY ID (ID'ye Göre Getir)
 class GetByIdUseCase<T extends BaseEntity> {
-  final BaseRepository<T> repository;
+  final CrudRepository<T> repository;
 
   GetByIdUseCase(this.repository);
 
@@ -27,7 +27,7 @@ class GetByIdUseCase<T extends BaseEntity> {
 
 // 3. CREATE (Oluştur)
 class CreateUseCase<T extends BaseEntity> {
-  final BaseRepository<T> repository;
+  final CrudRepository<T> repository;
 
   CreateUseCase(this.repository);
 
@@ -39,7 +39,7 @@ class CreateUseCase<T extends BaseEntity> {
 
 // 4. UPDATE (Güncelle)
 class UpdateUseCase<T extends BaseEntity> {
-  final BaseRepository<T> repository;
+  final CrudRepository<T> repository;
 
   UpdateUseCase(this.repository);
 
@@ -50,7 +50,7 @@ class UpdateUseCase<T extends BaseEntity> {
 
 // 5. DELETE (Sil)
 class DeleteUseCase<T extends BaseEntity> {
-  final BaseRepository<T> repository;
+  final CrudRepository<T> repository;
 
   DeleteUseCase(this.repository);
 

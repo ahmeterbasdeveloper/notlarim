@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:notlarim/localization/localization.dart';
+import 'package:notlarim/core/localization/localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'presentation/Screen/anamenu/ana_menu.dart';
-import 'presentation/Screen/splash/splash_screen.dart';
+import 'features/genel/anamenu/ana_menu.dart';
+import 'features/genel/splash/splash_screen.dart';
 
 void main() async {
   // ✅ DÜZELTME 1: Doğru method 'WidgetsFlutterBinding' sınıfındadır.

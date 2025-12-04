@@ -3,14 +3,14 @@
 import 'package:sqflite/sqflite.dart';
 
 // Modeller (Tablo ve Kolon isimlerine erişim için)
-import '../../data/models/durum_model.dart';
-import '../../data/models/kategori_model.dart';
-import '../../data/models/oncelik_model.dart';
-import '../../data/models/kullanicilar.dart';
-import '../../data/models/not_model.dart';
-import '../../data/models/kontrol_liste_model.dart';
-import '../../data/models/gorev_model.dart';
-import '../../data/models/hatirlatici_model.dart';
+import '../../features/durumlar/data/models/durum_model.dart';
+import '../../features/kategori/data/models/kategori_model.dart';
+import '../../features/oncelik/data/models/oncelik_model.dart';
+import '../../features/kullanicilar/data/models/kullanicilar.dart';
+import '../../features/notlar/data/models/not_model.dart';
+import '../../features/kontrol_listesi/data/models/kontrol_liste_model.dart';
+import '../../features/gorevler/data/models/gorev_model.dart';
+import '../../features/hatirlaticilar/data/models/hatirlatici_model.dart';
 
 class DbSchema {
   // Sabit SQL Tipleri

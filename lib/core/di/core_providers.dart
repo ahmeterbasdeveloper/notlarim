@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../abstract_db_service.dart';
-import '../../data/datasources/database_helper.dart';
+import '../database/database_helper.dart';
 
 // =============================================================================
 // DATABASE PROVIDER

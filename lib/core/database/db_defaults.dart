@@ -4,11 +4,11 @@ import 'package:sqflite/sqflite.dart';
 import '../../core/utils/security_helper.dart';
 
 // Modeller (Tablo adlarına erişim için)
-import '../../data/models/durum_model.dart';
-import '../../data/models/kategori_model.dart';
-import '../../data/models/oncelik_model.dart';
-import '../../data/models/kullanicilar.dart';
-import '../../data/models/not_model.dart';
+import '../../features/durumlar/data/models/durum_model.dart';
+import '../../features/kategori/data/models/kategori_model.dart';
+import '../../features/oncelik/data/models/oncelik_model.dart';
+import '../../features/kullanicilar/data/models/kullanicilar.dart';
+import '../../features/notlar/data/models/not_model.dart';
 
 class DbDefaults {
   static Future<void> insertDefaultData(Database db) async {
