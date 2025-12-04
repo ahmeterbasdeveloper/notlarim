@@ -11,10 +11,9 @@ import '../durum/providers/durum_providers.dart';
 import '../kategori/providers/kategori_providers.dart';
 import '../kontrol_liste/providers/kontrol_liste_providers.dart';
 import '../oncelik/providers/oncelik_providers.dart';
-import '../hatirlatici/providers/hatirlatici_providers.dart'; // ✅ Eklendi
+import '../hatirlatici/providers/hatirlatici_providers.dart';
 
 // Screens
-import 'package:notlarim/presentation/screen/notlar/not_add_edit.dart';
 import 'package:notlarim/presentation/screen/oncelik/oncelik_listesi.dart';
 import '../backup/backup_manager_screen.dart';
 import '../durum/durum_listesi.dart';
@@ -22,7 +21,8 @@ import '../kategori/kategori_listesi.dart';
 import '../kullanimklavuzu/kullanimklavuzu.dart';
 import '../notlar/not_listesi.dart';
 import '../kontrol_liste/kontrol_liste_listesi.dart';
-import '../hatirlatici/hatirlatici_listesi.dart'; // ✅ Eklendi
+import '../hatirlatici/hatirlatici_listesi.dart';
+import '../login/loginpage.dart'; // ✅ Login sayfası import edildi
 
 class AnaMenuMenuScreen extends ConsumerStatefulWidget {
   const AnaMenuMenuScreen({super.key});
@@ -34,14 +34,13 @@ class AnaMenuMenuScreen extends ConsumerStatefulWidget {
 class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
   int _selectedIndex = 0;
 
-  // 🚨 DEĞİŞİKLİK: Hatırlatıcı sayfası listeye eklendi (index 5)
   final List<Widget> _pages = const [
     NotListesi(), // 0
     KategoriListesi(), // 1
     DurumListesi(), // 2
     OncelikListesi(), // 3
     KontrolListeListesi(), // 4
-    HatirlaticiListesi(), // 5 ✅
+    HatirlaticiListesi(), // 5
   ];
 
   @override
@@ -61,25 +60,7 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
         children: _pages,
       ),
       drawer: _buildDrawer(context),
-      floatingActionButton: _buildFab(loc),
-    );
-  }
-
-  Widget? _buildFab(AppLocalizations loc) {
-    // Sadece Not Listesi açıkken FAB göster
-    if (_selectedIndex != 0) return null;
-
-    return FloatingActionButton(
-      backgroundColor: const Color.fromARGB(255, 78, 18, 92),
-      child: const Icon(Icons.add, color: Colors.white),
-      onPressed: () async {
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const NotAddEdit(),
-          ),
-        );
-        ref.invalidate(notNotifierProvider);
-      },
+      // ❌ floatingActionButton KALDIRILDI (Sayfalar kendi butonunu yönetecek)
     );
   }
 
@@ -97,19 +78,12 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
               style: const TextStyle(color: Colors.white, fontSize: 24),
             ),
           ),
-          // 📌 0: Notlar
           _drawerItem(Icons.list, loc.translate('menu_notes'), 0),
-          // 📌 1: Kategoriler
           _drawerItem(Icons.category, loc.translate('menu_categories'), 1),
-          // 📌 2: Durumlar
           _drawerItem(Icons.list_alt, loc.translate('menu_situations'), 2),
-          // 📌 3: Öncelikler
           _drawerItem(Icons.priority_high, loc.translate('menu_priorities'), 3),
-          // 📌 4: Kontrol Listesi
           _drawerItem(Icons.checklist, loc.translate('menu_checklists'), 4),
-          // 📌 5: Hatırlatıcı (YENİ EKLENDİ)
           _drawerItem(Icons.alarm, loc.translate('general_reminder'), 5),
-
           const Divider(),
         ],
       ),
@@ -150,7 +124,7 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
         ref.invalidate(kontrolListeNotifierProvider);
         break;
       case 5:
-        ref.invalidate(hatirlaticiNotifierProvider); // ✅ Hatırlatıcı yenileme
+        ref.invalidate(hatirlaticiNotifierProvider);
         break;
     }
   }
@@ -177,6 +151,10 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
           case 'manual':
             _showUserManual(context);
             break;
+          // ✅ ÇIKIŞ YAP İŞLEMİ
+          case 'logout':
+            _showLogoutConfirmation();
+            break;
         }
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -186,6 +164,21 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
         _popupItem(Icons.folder_open, loc.translate('database_manageBackups'),
             'manage'),
         const PopupMenuDivider(),
+
+        // ✅ ÇIKIŞ YAP MENU ITEM
+        PopupMenuItem<String>(
+          value: 'logout',
+          child: ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: Text(
+              loc.translate('menu_logout'),
+              style: const TextStyle(color: Colors.red),
+            ),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuDivider(),
+
         _popupItem(
             Icons.info, loc.translate('menu_versionInformation'), 'version'),
         _popupItem(Icons.help, loc.translate('menu_abouttheProgram'), 'about'),
@@ -219,12 +212,10 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
         MyApp.setLocale(context, Locale(value));
       },
       itemBuilder: (BuildContext context) => langs.entries
-          .map(
-            (e) => PopupMenuItem<String>(
-              value: e.key,
-              child: Text(loc.translate(e.value)),
-            ),
-          )
+          .map((e) => PopupMenuItem<String>(
+                value: e.key,
+                child: Text(loc.translate(e.value)),
+              ))
           .toList(),
     );
   }
@@ -238,6 +229,8 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
       ),
     );
   }
+
+  // ... Diğer mevcut fonksiyonlar (Backup, Version vb.) aynen duruyor ...
 
   void _showUserManual(BuildContext context) {
     Navigator.push(
@@ -287,8 +280,49 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // BACKUP & RESTORE
+  // ✅ ÇIKIŞ YAPMA FONKSİYONLARI
   // ---------------------------------------------------------------------------
+  void _showLogoutConfirmation() {
+    final loc = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(loc.translate('menu_logout') ?? 'Çıkış Yap'),
+          content: Text(loc.translate('logout_confirm_message') ??
+              'Uygulamadan çıkış yapmak istediğinize emin misiniz?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(loc.translate('menu_giveUp') ?? 'Vazgeç'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Dialogu kapat
+                _performLogout(); // Çıkış işlemini yap
+              },
+              child: Text(
+                loc.translate('menu_yes') ?? 'Evet',
+                style: const TextStyle(
+                    color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _performLogout() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (Route<dynamic> route) => false, // Tüm geçmiş sayfaları sil
+    );
+  }
+
+  // ... Backup fonksiyonları aynen devam ediyor ...
+
   Future<void> _showBackupDialog() async {
     final loc = AppLocalizations.of(context);
     final controller = TextEditingController();
@@ -429,7 +463,6 @@ class _AnaMenuMenuScreenState extends ConsumerState<AnaMenuMenuScreen> {
       );
 
       if (success) {
-        // Tüm listeleri yenile
         _refreshPageData(0);
         _refreshPageData(1);
         _refreshPageData(2);

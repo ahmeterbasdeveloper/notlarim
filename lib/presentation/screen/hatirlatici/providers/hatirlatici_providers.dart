@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../domain/entities/hatirlatici.dart';
 
-// UseCases
-import '../../../../domain/usecases/hatirlatici/get_all_hatirlatici.dart';
-
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ Generic UseCase
+import '../../../../core/usecases/crud_usecases.dart';
+// ✅ DI Providers
+import '../../../../core/di/hatirlatici_di_providers.dart';
 
 // 1. STATE
 class HatirlaticiState {
@@ -34,7 +33,7 @@ class HatirlaticiState {
 
 // 2. NOTIFIER
 class HatirlaticiNotifier extends StateNotifier<HatirlaticiState> {
-  final GetAllHatirlatici _getAllHatirlatici;
+  final GetAllUseCase<Hatirlatici> _getAllHatirlatici;
 
   HatirlaticiNotifier(this._getAllHatirlatici) : super(HatirlaticiState()) {
     loadHatirlaticilar();
@@ -43,7 +42,11 @@ class HatirlaticiNotifier extends StateNotifier<HatirlaticiState> {
   Future<void> loadHatirlaticilar() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final result = await _getAllHatirlatici();
+      final result = await _getAllHatirlatici.call();
+      // İsterseniz tarihe göre sıralayabilirsiniz
+      result.sort((a, b) =>
+          a.hatirlatmaTarihiZamani.compareTo(b.hatirlatmaTarihiZamani));
+
       state = state.copyWith(isLoading: false, hatirlaticilar: result);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
@@ -54,5 +57,6 @@ class HatirlaticiNotifier extends StateNotifier<HatirlaticiState> {
 // 3. PROVIDER
 final hatirlaticiNotifierProvider =
     StateNotifierProvider<HatirlaticiNotifier, HatirlaticiState>((ref) {
-  return HatirlaticiNotifier(sl<GetAllHatirlatici>());
+  final getAll = ref.watch(getAllHatirlaticiProvider);
+  return HatirlaticiNotifier(getAll);
 });

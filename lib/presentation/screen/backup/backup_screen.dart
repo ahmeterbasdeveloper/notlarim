@@ -138,8 +138,7 @@ class _BackupScreenState extends State<BackupScreen> {
         }
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text(loc.translate('database_backupRestoreSuccessMessage')),
+          content: Text(loc.translate('database_backupRestoreSuccessMessage')),
           backgroundColor: Colors.green,
         ));
       } else {
@@ -151,8 +150,8 @@ class _BackupScreenState extends State<BackupScreen> {
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-            '${loc.translate('database_backupRestoreErrorMessage')}: $e'),
+        content:
+            Text('${loc.translate('database_backupRestoreErrorMessage')}: $e'),
         backgroundColor: Colors.red,
       ));
     }
@@ -265,8 +264,7 @@ class _BackupScreenState extends State<BackupScreen> {
                                 children: [
                                   const Icon(Icons.restore, size: 18),
                                   const SizedBox(width: 8),
-                                  Text(loc.translate(
-                                      'database_restoreBackup')),
+                                  Text(loc.translate('database_restoreBackup')),
                                 ],
                               ),
                             ),

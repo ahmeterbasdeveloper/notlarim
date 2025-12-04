@@ -1,7 +1,11 @@
-/// 🧱 Domain Entity — yalnızca iş mantığını temsil eder.
-/// Veri tabanı, JSON veya UI detayları içermez.
-class Not {
-  final int? id;
+// lib/domain/entities/not.dart
+
+import '../../core/base/base_entity.dart';
+
+/// 🧱 Domain Entity — BaseEntity'den türetildi
+class Not extends BaseEntity {
+  // ❌ 'final int? id;' satırını sildik çünkü BaseEntity içinde zaten var.
+
   final int kategoriId;
   final int oncelikId;
   final String baslik;
@@ -10,7 +14,7 @@ class Not {
   final int durumId;
 
   const Not({
-    this.id,
+    super.id, // ✅ id parametresini BaseEntity'ye gönderiyoruz
     required this.kategoriId,
     required this.oncelikId,
     required this.baslik,
@@ -18,6 +22,20 @@ class Not {
     required this.kayitZamani,
     required this.durumId,
   });
+
+  /// ✅ Generic Repository create/update işlemleri için gerekli
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      '_id': id, // SQLite'daki kolon adı '_id' ise
+      'kategoriId': kategoriId,
+      'oncelikId': oncelikId,
+      'baslik': baslik,
+      'aciklama': aciklama,
+      'kayitZamani': kayitZamani.toIso8601String(), // DateTime -> String
+      'durumId': durumId,
+    };
+  }
 
   /// Yeni bir Not nesnesi oluşturmak veya mevcut olanı kopyalamak için
   Not copyWith({
@@ -30,7 +48,7 @@ class Not {
     int? durumId,
   }) {
     return Not(
-      id: id ?? this.id,
+      id: id ?? this.id, // this.id artık BaseEntity'den geliyor
       kategoriId: kategoriId ?? this.kategoriId,
       oncelikId: oncelikId ?? this.oncelikId,
       baslik: baslik ?? this.baslik,

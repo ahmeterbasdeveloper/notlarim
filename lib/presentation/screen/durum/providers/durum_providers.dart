@@ -1,13 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../domain/entities/durum.dart';
 
-// UseCases
-import '../../../../domain/usecases/durum/get_all_durum.dart';
+// ✅ 1. Generic UseCase Importu
+import '../../../../core/usecases/crud_usecases.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ 2. DI Provider Dosyası Importu (GetIt yerine)
+import '../../../../core/di/durum_di_providers.dart';
 
-// 1. STATE
+// 1. STATE (Değişiklik Yok)
 class DurumState {
   final List<Durum> durumlar;
   final bool isLoading;
@@ -34,7 +34,8 @@ class DurumState {
 
 // 2. NOTIFIER
 class DurumNotifier extends StateNotifier<DurumState> {
-  final GetAllDurum _getAllDurum;
+  // ✅ Generic UseCase Kullanımı
+  final GetAllUseCase<Durum> _getAllDurum;
 
   DurumNotifier(this._getAllDurum) : super(DurumState()) {
     loadDurumlar();
@@ -43,7 +44,8 @@ class DurumNotifier extends StateNotifier<DurumState> {
   Future<void> loadDurumlar() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final result = await _getAllDurum();
+      // ✅ UseCase çağrısı
+      final result = await _getAllDurum.call();
       state = state.copyWith(isLoading: false, durumlar: result);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
@@ -54,5 +56,7 @@ class DurumNotifier extends StateNotifier<DurumState> {
 // 3. PROVIDER
 final durumNotifierProvider =
     StateNotifierProvider<DurumNotifier, DurumState>((ref) {
-  return DurumNotifier(sl<GetAllDurum>());
+  final getAllDurum = ref.watch(getAllDurumProvider);
+
+  return DurumNotifier(getAllDurum);
 });

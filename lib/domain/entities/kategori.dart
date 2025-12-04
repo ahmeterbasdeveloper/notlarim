@@ -1,7 +1,6 @@
-/// 🧱 Domain Entity — yalnızca iş mantığını temsil eder.
-/// Veri tabanı, JSON veya UI detayları içermez.
-class Kategori {
-  final int? id;
+import '../../core/base/base_entity.dart';
+
+class Kategori extends BaseEntity {
   final String baslik;
   final String aciklama;
   final String renkKodu;
@@ -9,7 +8,7 @@ class Kategori {
   final bool sabitMi;
 
   const Kategori({
-    this.id,
+    super.id, // BaseEntity'den gelen id
     required this.baslik,
     required this.aciklama,
     required this.renkKodu,
@@ -17,7 +16,22 @@ class Kategori {
     required this.sabitMi,
   });
 
-  /// Yeni bir Kategori nesnesi oluşturmak veya mevcut olanı kopyalamak için
+  // ⚠️ Generic Repository'nin çalışması için bu metodun burada tanımlı olması gerekir.
+  // Ancak Clean Architecture gereği içini boş bırakıp Model sınıfında doldurabilirsiniz
+  // veya basitlik adına burada da doldurabilirsiniz. Aşağıda dolu halini veriyorum:
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      '_id': id, // SQLite tablonuzdaki ID kolon adı '_id' ise
+      'baslik': baslik,
+      'aciklama': aciklama,
+      'renkKodu': renkKodu,
+      'kayitZamani': kayitZamani.toIso8601String(),
+      'sabitMi': sabitMi ? 1 : 0, // SQLite boolean desteklemez, 0/1 kullanır
+    };
+  }
+
+  @override
   Kategori copyWith({
     int? id,
     String? baslik,
@@ -35,25 +49,4 @@ class Kategori {
       sabitMi: sabitMi ?? this.sabitMi,
     );
   }
-
-  /// Karşılaştırmalar ve testler için eşitlik operatörü
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Kategori &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          baslik == other.baslik &&
-          aciklama == other.aciklama &&
-          renkKodu == other.renkKodu &&
-          kayitZamani == other.kayitZamani &&
-          sabitMi == other.sabitMi;
-
-  @override
-  int get hashCode =>
-      Object.hash(id, baslik, aciklama, renkKodu, kayitZamani, sabitMi);
-
-  @override
-  String toString() =>
-      'Kategori(id: $id, baslik: $baslik, aciklama: $aciklama, renkKodu: $renkKodu, kayitZamani: $kayitZamani, sabitMi: $sabitMi)';
 }

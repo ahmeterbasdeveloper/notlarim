@@ -1,10 +1,9 @@
 import '../entities/kontrol_liste.dart';
+import 'base_repository.dart';
 
-abstract class KontrolListeRepository {
-  Future<KontrolListe> getById(int id);
-  Future<List<KontrolListe>> getAll();
+abstract class KontrolListeRepository extends BaseRepository<KontrolListe> {
+  // ❌ Standard CRUD metodlarını (getAll, getById, create, update, delete) SİLİN.
+
+  // 👇 Sadece özel metodlar kalmalı:
   Future<List<KontrolListe>> getByDurum(int durumId);
-  Future<KontrolListe> create(KontrolListe kontrolListe);
-  Future<int> update(KontrolListe kontrolListe);
-  Future<int> delete(int id);
 }

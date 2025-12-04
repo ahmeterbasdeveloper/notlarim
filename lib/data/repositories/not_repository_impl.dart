@@ -1,151 +1,96 @@
-import 'package:sqflite/sqflite.dart'; // 👈 1. BU SATIRI EKLE
+// lib/data/repositories/not_repository_impl.dart
 
+import '../../../core/abstract_db_service.dart';
+
+// Entities & Models
 import '../../domain/entities/not.dart';
+import '../models/not_model.dart';
+
+// Repositories
 import '../../domain/repositories/not_repository.dart';
 import '../../domain/repositories/kategori_repository.dart';
 import '../../domain/repositories/oncelik_repository.dart';
-import '../models/not_model.dart';
 
-// Abstract Interface
-import '../../../core/abstract_db_service.dart';
+// ✅ Base Impl Importu (Standart işler buradan gelecek)
+import 'base_repository_impl.dart';
 
-class NotRepositoryImpl implements NotRepository {
-  final AbstractDBService _dbService;
-
+class NotRepositoryImpl extends BaseRepositoryImpl<Not>
+    implements NotRepository {
   final KategoriRepository kategoriRepository;
   final OncelikRepository oncelikRepository;
 
   NotRepositoryImpl(
-    this._dbService, {
+    AbstractDBService dbService, {
     required this.kategoriRepository,
     required this.oncelikRepository,
-  });
+  }) : super(
+          dbService,
+          tableNotlar, // Model dosyasındaki tablo adı sabiti
+          (json) => NotModel.fromJson(json), // Model dönüştürücü
+        );
 
-  @override
-  Future<Not?> getNotById(int id) async {
-    // 👇 2. DEĞİŞİKLİK: 'final db' yerine 'final Database db' yazıyoruz
-    final Database db = await _dbService.getDatabaseInstance();
+  // ---------------------------------------------------------------------------
+  // ❌ SİLİNEN METODLAR:
+  // createNot, updateNot, deleteNot, getAllNotlar, getNotById
+  // Bunları sildik çünkü BaseRepositoryImpl bunları otomatik yapıyor.
+  // ---------------------------------------------------------------------------
 
-    final maps = await db.query(
-      tableNotlar,
-      columns: NotAlanlar.values,
-      where: '${NotAlanlar.id} = ?',
-      whereArgs: [id],
-    );
-
-    if (maps.isNotEmpty) {
-      return NotModel.fromJson(maps.first).toEntity();
-    }
-    return null;
-  }
-
-  @override
-  Future<List<Not>> getAllNotlar() async {
-    // 👇 BURASI KRİTİK: Türü 'Database' olarak belirttik
-    final Database db = await _dbService.getDatabaseInstance();
-
-    const orderBy = '${NotAlanlar.kayitZamani} DESC';
-
-    // Artık Dart, result'ın List<Map> olduğunu biliyor
-    final result = await db.query(tableNotlar, orderBy: orderBy);
-
-    return result.map((json) => NotModel.fromJson(json).toEntity()).toList();
-  }
+  // 👇 SADECE ÖZEL SORGULARI BURAYA YAZIYORUZ:
 
   @override
   Future<List<Not>> searchNotlar(String searchText) async {
-    final Database db = await _dbService.getDatabaseInstance();
-
-    final result = await db.query(
-      tableNotlar,
+    final database = await db; // 'db' getter'ı Base'den gelir
+    final result = await database.query(
+      tableName, // 'tableName' Base'den gelir
       where: '${NotAlanlar.baslik} LIKE ?',
       whereArgs: ['%$searchText%'],
     );
-
-    return result.map((json) => NotModel.fromJson(json).toEntity()).toList();
+    // 'fromMap' Base'den gelir
+    return result.map((json) => fromMap(json)).toList();
   }
 
   @override
   Future<List<Not>> getNotlarByDurum(int durumId) async {
-    final Database db = await _dbService.getDatabaseInstance();
-
-    final result = await db.query(
-      tableNotlar,
+    final database = await db;
+    final result = await database.query(
+      tableName,
       where: '${NotAlanlar.durumId} = ?',
       whereArgs: [durumId],
     );
-
-    return result.map((json) => NotModel.fromJson(json).toEntity()).toList();
+    return result.map((json) => fromMap(json)).toList();
   }
 
   @override
   Future<List<Not>> getNotlarByKategori(int kategoriId) async {
-    final Database db = await _dbService.getDatabaseInstance();
-
-    final result = await db.query(
-      tableNotlar,
+    final database = await db;
+    final result = await database.query(
+      tableName,
       where: '${NotAlanlar.kategoriId} = ?',
       whereArgs: [kategoriId],
     );
-
-    return result.map((json) => NotModel.fromJson(json).toEntity()).toList();
+    return result.map((json) => fromMap(json)).toList();
   }
 
   @override
   Future<List<Not>> getNotlarByOncelik(int oncelikId) async {
-    final Database db = await _dbService.getDatabaseInstance();
-
-    final result = await db.query(
-      tableNotlar,
+    final database = await db;
+    final result = await database.query(
+      tableName,
       where: '${NotAlanlar.oncelikId} = ?',
       whereArgs: [oncelikId],
     );
-
-    return result.map((json) => NotModel.fromJson(json).toEntity()).toList();
+    return result.map((json) => fromMap(json)).toList();
   }
 
-  @override
-  Future<Not> createNot(Not not) async {
-    final Database db = await _dbService.getDatabaseInstance();
-
-    final model = NotModel.fromEntity(not);
-    final id = await db.insert(tableNotlar, model.toJson());
-
-    return not.copyWith(id: id);
-  }
-
-  @override
-  Future<int> updateNot(Not not) async {
-    final Database db = await _dbService.getDatabaseInstance();
-
-    final model = NotModel.fromEntity(not);
-
-    return await db.update(
-      tableNotlar,
-      model.toJson(),
-      where: '${NotAlanlar.id} = ?',
-      whereArgs: [not.id],
-    );
-  }
-
-  @override
-  Future<int> deleteNot(int id) async {
-    final Database db = await _dbService.getDatabaseInstance();
-
-    return await db.delete(
-      tableNotlar,
-      where: '${NotAlanlar.id} = ?',
-      whereArgs: [id],
-    );
-  }
-
+  // Ekstra: İlişkili verileri getirme (Opsiyonel)
   Future<List<Map<String, dynamic>>> getAllNotWithDetails() async {
-    final notlar = await getAllNotlar();
+    final notlar = await getAll(); // Base'den gelen getAll()
     final List<Map<String, dynamic>> notlarWithDetails = [];
 
     for (final not in notlar) {
-      final kategori = await kategoriRepository.getKategoriById(not.kategoriId);
-      final oncelik = await oncelikRepository.getOncelikById(not.oncelikId);
+      // Generic Repository metodu: getById
+      final kategori = await kategoriRepository.getById(not.kategoriId);
+      final oncelik = await oncelikRepository.getById(not.oncelikId);
 
       notlarWithDetails.add({
         'not': not,

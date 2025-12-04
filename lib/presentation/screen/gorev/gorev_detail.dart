@@ -1,32 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 import 'package:notlarim/localization/localization.dart';
 import '../../../../core/config/app_config.dart';
 
 // Domain
 import '../../../../domain/entities/gorev.dart';
-import '../../../../domain/usecases/gorev/get_gorev_by_id.dart';
-import '../../../../domain/usecases/gorev/delete_gorev.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ DI Providers
+import '../../../../core/di/gorev_di_providers.dart';
 
 // UI
 import 'gorev_add_edit.dart';
 
-class GorevDetail extends StatefulWidget {
+class GorevDetail extends ConsumerStatefulWidget {
   final int gorevId;
 
   const GorevDetail({super.key, required this.gorevId});
 
   @override
-  State<GorevDetail> createState() => _GorevDetailState();
+  ConsumerState<GorevDetail> createState() => _GorevDetailState();
 }
 
-class _GorevDetailState extends State<GorevDetail> {
-  // ✅ UseCase'leri DI'dan çekiyoruz
-  final GetGorevById _getGorevByIdUseCase = sl<GetGorevById>();
-  final DeleteGorev _deleteGorevUseCase = sl<DeleteGorev>();
-
+class _GorevDetailState extends ConsumerState<GorevDetail> {
   Gorev? gorev;
   bool isLoading = false;
 
@@ -39,18 +34,20 @@ class _GorevDetailState extends State<GorevDetail> {
   Future<void> _refreshGorev() async {
     setState(() => isLoading = true);
     try {
-      final result = await _getGorevByIdUseCase(widget.gorevId);
+      // ✅ ref.read Generic GetById
+      final result = await ref.read(getGorevByIdProvider).call(widget.gorevId);
       setState(() => gorev = result);
     } catch (e) {
       debugPrint('❌ Görev yüklenirken hata: $e');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   Future<void> _deleteGorev() async {
     try {
-      await _deleteGorevUseCase(widget.gorevId);
+      // ✅ ref.read Generic Delete
+      await ref.read(deleteGorevProvider).call(widget.gorevId);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       debugPrint('❌ Görev silinirken hata: $e');
@@ -60,7 +57,6 @@ class _GorevDetailState extends State<GorevDetail> {
   @override
   Widget build(BuildContext context) {
     final local = AppLocalizations.of(context);
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -72,10 +68,7 @@ class _GorevDetailState extends State<GorevDetail> {
         title: Text(
           '${local.translate('general_missionJob')} ${local.translate('general_detail')}',
           style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.amber,
-          ),
+              fontSize: 22, fontWeight: FontWeight.bold, color: Colors.amber),
         ),
         actions: [
           IconButton(
@@ -84,7 +77,6 @@ class _GorevDetailState extends State<GorevDetail> {
             onPressed: isLoading || gorev == null
                 ? null
                 : () async {
-                    // Düzenleme ekranına parametre göndermeden yönlendiriyoruz
                     await Navigator.of(context).push(MaterialPageRoute(
                       builder: (context) => GorevAddEdit(gorev: gorev!),
                     ));
@@ -105,10 +97,9 @@ class _GorevDetailState extends State<GorevDetail> {
                   child: Text(
                     local.translate('general_notFound'),
                     style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.red,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
                   ),
                 )
               : _buildDetail(context, gorev!, local),
@@ -147,21 +138,13 @@ class _GorevDetailState extends State<GorevDetail> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.red,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.black,
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red)),
+          Text(value,
+              style: const TextStyle(fontSize: 16, color: Colors.black)),
         ],
       ),
     );

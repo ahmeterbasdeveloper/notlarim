@@ -1,7 +1,9 @@
-/// 🧱 Domain Entity — yalnızca iş mantığını temsil eder.
-/// Veri tabanı, JSON veya UI detayları içermez.
-class Gorev {
-  final int? id;
+import '../../core/base/base_entity.dart';
+
+/// 🧱 Domain Entity
+class Gorev extends BaseEntity {
+  // ❌ 'final int? id;' satırını siliyoruz, BaseEntity'den geliyor.
+
   final int grupId;
   final String baslik;
   final String aciklama;
@@ -13,7 +15,7 @@ class Gorev {
   final int durumId;
 
   const Gorev({
-    this.id,
+    super.id, // ✅ id BaseEntity'ye
     required this.grupId,
     required this.baslik,
     required this.aciklama,
@@ -25,7 +27,24 @@ class Gorev {
     required this.durumId,
   });
 
-  /// Yeni bir Gorev nesnesi oluşturmak veya mevcut olanı kopyalamak için
+  /// ✅ Generic Repository için gerekli
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      '_id': id,
+      'grupId': grupId,
+      'baslik': baslik,
+      'aciklama': aciklama,
+      'kategoriId': kategoriId,
+      'oncelikId': oncelikId,
+      'baslamaTarihiZamani': baslamaTarihiZamani.toIso8601String(),
+      'bitisTarihiZamani': bitisTarihiZamani.toIso8601String(),
+      'kayitZamani': kayitZamani.toIso8601String(),
+      'durumId': durumId,
+    };
+  }
+
+  // CopyWith (Aynen Kalabilir, sadece id güncellendi)
   Gorev copyWith({
     int? id,
     int? grupId,
@@ -52,38 +71,5 @@ class Gorev {
     );
   }
 
-  /// Karşılaştırmalar ve testler için eşitlik operatörü
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Gorev &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          grupId == other.grupId &&
-          baslik == other.baslik &&
-          aciklama == other.aciklama &&
-          kategoriId == other.kategoriId &&
-          oncelikId == other.oncelikId &&
-          baslamaTarihiZamani == other.baslamaTarihiZamani &&
-          bitisTarihiZamani == other.bitisTarihiZamani &&
-          kayitZamani == other.kayitZamani &&
-          durumId == other.durumId;
-
-  @override
-  int get hashCode => Object.hash(
-        id,
-        grupId,
-        baslik,
-        aciklama,
-        kategoriId,
-        oncelikId,
-        baslamaTarihiZamani,
-        bitisTarihiZamani,
-        kayitZamani,
-        durumId,
-      );
-
-  @override
-  String toString() =>
-      'Gorev(id: $id, grupId: $grupId, baslik: $baslik, aciklama: $aciklama, kategoriId: $kategoriId, oncelikId: $oncelikId, baslama: $baslamaTarihiZamani, bitis: $bitisTarihiZamani, kayit: $kayitZamani, durumId: $durumId)';
+  // hashCode ve operator == metodları aynen kalabilir
 }

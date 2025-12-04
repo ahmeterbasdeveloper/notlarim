@@ -1,9 +1,10 @@
-import 'package:flutter/foundation.dart'; // debugPrint için
+// ... mevcut importlar
+import 'package:notlarim/core/abstract_db_service.dart';
+import 'package:notlarim/data/models/kullanicilar.dart';
+import 'package:notlarim/domain/repositories/kullanici_repository.dart';
 import 'package:sqflite/sqflite.dart';
-import '../../../core/abstract_db_service.dart';
-import '../../domain/repositories/kullanici_repository.dart';
-import '../models/kullanicilar.dart';
-import '../../../core/utils/security_helper.dart';
+
+import '../../../core/utils/security_helper.dart'; // Hashleme için gerekli
 
 class KullaniciRepositoryImpl implements KullaniciRepository {
   final AbstractDBService _dbService;
@@ -11,40 +12,48 @@ class KullaniciRepositoryImpl implements KullaniciRepository {
   KullaniciRepositoryImpl(this._dbService);
 
   @override
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String userName, String password) async {
+    // ... eski kodlarınız aynı kalsın ...
+    // (Burayı silmeyin, olduğu gibi kalsın)
     final Database db = await _dbService.getDatabaseInstance();
-
-    // 1. Gelen şifreyi hashle
     final String hashedPassword = SecurityHelper.hashPassword(password);
-
-    debugPrint('🔐 Girilen Şifre (Plain): $password');
-    debugPrint('🔐 Aranacak Hash: $hashedPassword');
-
-    // 2. Veritabanında hashlenmiş şifreyi ara
     final List<Map<String, dynamic>> maps = await db.query(
       'kullanicilar',
       where:
-          '${KullaniciAlanlar.email} = ? AND ${KullaniciAlanlar.password} = ?',
-      whereArgs: [email, hashedPassword],
+          '${KullaniciAlanlar.userName} = ? AND ${KullaniciAlanlar.password} = ?',
+      whereArgs: [userName, hashedPassword],
+    );
+    return maps.isNotEmpty;
+  }
+
+  // 👇 1. KULLANICI DOĞRULAMA (Username + Email eşleşiyor mu?)
+  @override
+  Future<bool> verifyUser(String userName, String email) async {
+    final Database db = await _dbService.getDatabaseInstance();
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'kullanicilar',
+      where:
+          '${KullaniciAlanlar.userName} = ? AND ${KullaniciAlanlar.email} = ?',
+      whereArgs: [userName, email],
     );
 
-    // Hata ayıklama: Eğer boş dönüyorsa, o mail adresiyle kayıtlı ne var ona bakalım
-    if (maps.isEmpty) {
-      debugPrint(
-          '⚠️ Eşleşme bulunamadı. Veritabanındaki bu mailin kaydına bakılıyor...');
-      final checkUser = await db.query(
-        'kullanicilar',
-        where: '${KullaniciAlanlar.email} = ?',
-        whereArgs: [email],
-      );
-      if (checkUser.isNotEmpty) {
-        debugPrint(
-            'ℹ️ Veritabanındaki Kayıtlı Hash: ${checkUser.first['password']}');
-      } else {
-        debugPrint('ℹ️ Bu email ile kayıtlı kullanıcı YOK.');
-      }
-    }
-
     return maps.isNotEmpty;
+  }
+
+  // 👇 2. ŞİFRE GÜNCELLEME
+  @override
+  Future<void> updatePassword(String userName, String newPassword) async {
+    final Database db = await _dbService.getDatabaseInstance();
+
+    // Yeni şifreyi hashliyoruz
+    final String hashedPassword = SecurityHelper.hashPassword(newPassword);
+
+    await db.update(
+      'kullanicilar',
+      {KullaniciAlanlar.password: hashedPassword},
+      where: '${KullaniciAlanlar.userName} = ?',
+      whereArgs: [userName],
+    );
   }
 }

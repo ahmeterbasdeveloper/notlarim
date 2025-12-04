@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:notlarim/localization/localization.dart';
 
-// Domain
+// Domain Entities
 import '../../../../domain/entities/kategori.dart';
 import '../../../../domain/entities/oncelik.dart';
-import '../../../../domain/usecases/kategori/get_all_kategori.dart';
-import '../../../../domain/usecases/oncelik/get_all_oncelik.dart';
 
 class GorevlerForm extends StatefulWidget {
   final String? baslik;
@@ -23,8 +21,9 @@ class GorevlerForm extends StatefulWidget {
   final ValueChanged<DateTime> onChangedBaslamaTarihiZamani;
   final ValueChanged<DateTime> onChangedBitisTarihiZamani;
 
-  final GetAllKategori getAllKategoriUseCase;
-  final GetAllOncelik getAllOncelikUseCase;
+  // ✅ ARTIK USECASE YOK, DİREKT LİSTE ALIYORUZ
+  final List<Kategori> kategoriListesi;
+  final List<Oncelik> oncelikListesi;
 
   const GorevlerForm({
     super.key,
@@ -40,8 +39,8 @@ class GorevlerForm extends StatefulWidget {
     required this.onChangedAciklama,
     required this.onChangedBaslamaTarihiZamani,
     required this.onChangedBitisTarihiZamani,
-    required this.getAllKategoriUseCase,
-    required this.getAllOncelikUseCase,
+    required this.kategoriListesi, // ✅
+    required this.oncelikListesi, // ✅
   });
 
   @override
@@ -57,23 +56,32 @@ class _GorevlerFormState extends State<GorevlerForm> {
   @override
   void initState() {
     super.initState();
-
-    selectedKategoriId = widget.kategoriId ?? 1;
-    selectedOncelikId = widget.oncelikId ?? 1;
+    selectedKategoriId = widget.kategoriId;
+    selectedOncelikId = widget.oncelikId;
 
     _baslamaTarihiController = TextEditingController(
       text: _formatDate(widget.baslamaTarihiZamani),
     );
-
     _bitisTarihiController = TextEditingController(
       text: _formatDate(widget.bitisTarihiZamani),
     );
   }
 
+  // DidUpdateWidget ekleyerek parent state değiştiğinde (veri yüklendiğinde) formu güncelle
+  @override
+  void didUpdateWidget(covariant GorevlerForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.kategoriId != widget.kategoriId) {
+      selectedKategoriId = widget.kategoriId;
+    }
+    if (oldWidget.oncelikId != widget.oncelikId) {
+      selectedOncelikId = widget.oncelikId;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final local = AppLocalizations.of(context);
-
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -102,88 +110,68 @@ class _GorevlerFormState extends State<GorevlerForm> {
   }
 
   Widget _buildKategoriDropdown(AppLocalizations local) {
-    return FutureBuilder<List<Kategori>>(
-      future: widget.getAllKategoriUseCase(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Text(
-            '${local.translate('general_dataLoadingErrorMessage')}: ${snapshot.error}',
-            style: const TextStyle(color: Colors.red),
-          );
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Text(local.translate('general_notFound'));
+    // Liste boşsa bilgi ver veya boş göster
+    if (widget.kategoriListesi.isEmpty) {
+      return Text(local.translate('general_notFound'));
+    }
+
+    final items = widget.kategoriListesi
+        .map((kategori) => DropdownMenuItem<int>(
+              value: kategori.id,
+              child: Text(kategori.baslik),
+            ))
+        .toList();
+
+    return DropdownButtonFormField<int>(
+      initialValue: selectedKategoriId,
+      items: items,
+      onChanged: (value) {
+        if (value != null) {
+          setState(() => selectedKategoriId = value);
+          widget.onChangedKategori(value);
         }
-
-        final kategoriler = snapshot.data!;
-        final items = kategoriler
-            .map((kategori) => DropdownMenuItem<int>(
-                  value: kategori.id,
-                  child: Text(kategori.baslik),
-                ))
-            .toList();
-
-        return DropdownButtonFormField<int>(
-          initialValue: selectedKategoriId,
-          items: items,
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => selectedKategoriId = value);
-              widget.onChangedKategori(value);
-            }
-          },
-          decoration: InputDecoration(
-            labelText:
-                '${local.translate('general_categori')} ${local.translate('general_select')}',
-            border: const OutlineInputBorder(),
-          ),
-        );
       },
+      decoration: InputDecoration(
+        labelText:
+            '${local.translate('general_categori')} ${local.translate('general_select')}',
+        border: const OutlineInputBorder(),
+      ),
     );
   }
 
   Widget _buildOncelikDropdown(AppLocalizations local) {
-    return FutureBuilder<List<Oncelik>>(
-      future: widget.getAllOncelikUseCase(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Text(
-            '${local.translate('general_dataLoadingErrorMessage')}: ${snapshot.error}',
-            style: const TextStyle(color: Colors.red),
-          );
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Text(local.translate('general_notFound'));
+    if (widget.oncelikListesi.isEmpty) {
+      return Text(local.translate('general_notFound'));
+    }
+
+    final items = widget.oncelikListesi
+        .map((oncelik) => DropdownMenuItem<int>(
+              value: oncelik.id,
+              child: Text(oncelik.baslik),
+            ))
+        .toList();
+
+    return DropdownButtonFormField<int>(
+      initialValue: selectedOncelikId,
+      items: items,
+      onChanged: (value) {
+        if (value != null) {
+          setState(() => selectedOncelikId = value);
+          widget.onChangedOncelik(value);
         }
-
-        final oncelikler = snapshot.data!;
-        final items = oncelikler
-            .map((oncelik) => DropdownMenuItem<int>(
-                  value: oncelik.id,
-                  child: Text(oncelik.baslik),
-                ))
-            .toList();
-
-        return DropdownButtonFormField<int>(
-          initialValue: selectedOncelikId,
-          items: items,
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => selectedOncelikId = value);
-              widget.onChangedOncelik(value);
-            }
-          },
-          decoration: InputDecoration(
-            labelText:
-                '${local.translate('general_priority')} ${local.translate('general_select')}',
-            border: const OutlineInputBorder(),
-          ),
-        );
       },
+      decoration: InputDecoration(
+        labelText:
+            '${local.translate('general_priority')} ${local.translate('general_select')}',
+        border: const OutlineInputBorder(),
+      ),
     );
   }
+
+  // ... (TextField ve DatePicker metodları öncekiyle aynı kalabilir)
+  // Kısaltma amacıyla buraya eklemiyorum, dosyanızdaki mevcut _buildBaslik, _buildAciklama vb. kullanın.
+
+  // Sadece context ve controller kullanımlarına dikkat edin.
 
   Widget _buildBaslik(AppLocalizations local) => TextFormField(
         maxLines: 1,
@@ -195,8 +183,9 @@ class _GorevlerFormState extends State<GorevlerForm> {
           labelText:
               '${local.translate('general_title')} ${local.translate('general_enter')}',
         ),
-        validator: (value) =>
-            value == null || value.isEmpty ? local.translate('general_notEmpty') : null,
+        validator: (value) => value == null || value.isEmpty
+            ? local.translate('general_notEmpty')
+            : null,
         onChanged: widget.onChangedBaslik,
       );
 
@@ -209,8 +198,9 @@ class _GorevlerFormState extends State<GorevlerForm> {
           labelText:
               '${local.translate('general_explanation')} ${local.translate('general_enter')}',
         ),
-        validator: (value) =>
-            value == null || value.isEmpty ? local.translate('general_notEmpty') : null,
+        validator: (value) => value == null || value.isEmpty
+            ? local.translate('general_notEmpty')
+            : null,
         onChanged: widget.onChangedAciklama,
       );
 
@@ -238,8 +228,8 @@ class _GorevlerFormState extends State<GorevlerForm> {
         onTap: () => _selectDate(context, _bitisTarihiController, false),
       );
 
-  Future<void> _selectDate(
-      BuildContext context, TextEditingController controller, bool isStart) async {
+  Future<void> _selectDate(BuildContext context,
+      TextEditingController controller, bool isStart) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),

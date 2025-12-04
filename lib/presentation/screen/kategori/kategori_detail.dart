@@ -1,32 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 import 'package:notlarim/localization/localization.dart';
 import 'package:notlarim/presentation/Screen/kategori/kategori_add_edit.dart';
 import '../../../../core/config/app_config.dart';
 
-// Domain
+// Domain Entity
 import '../../../../domain/entities/kategori.dart';
-import '../../../../domain/usecases/kategori/get_kategori_by_id.dart';
-import '../../../../domain/usecases/kategori/delete_kategori.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ DI Providers
+import '../../../../core/di/kategori_di_providers.dart';
 
-class KategoriDetail extends StatefulWidget {
+class KategoriDetail extends ConsumerStatefulWidget {
   final int kategoriId;
 
   const KategoriDetail({super.key, required this.kategoriId});
 
   @override
-  State<KategoriDetail> createState() => _KategoriDetailState();
+  ConsumerState<KategoriDetail> createState() => _KategoriDetailState();
 }
 
-class _KategoriDetailState extends State<KategoriDetail> {
+class _KategoriDetailState extends ConsumerState<KategoriDetail> {
   Kategori? kategori;
   bool isLoading = false;
-
-  // ✅ UseCase'ler DI'dan
-  final GetKategoriById _getKategoriByIdUseCase = sl<GetKategoriById>();
-  final DeleteKategori _deleteKategoriUseCase = sl<DeleteKategori>();
 
   @override
   void initState() {
@@ -37,13 +32,15 @@ class _KategoriDetailState extends State<KategoriDetail> {
   Future<void> _refreshKategori() async {
     setState(() => isLoading = true);
     try {
-      final result = await _getKategoriByIdUseCase(widget.kategoriId);
+      // ✅ ref.read ile veri çekme
+      final result =
+          await ref.read(getKategoriByIdProvider).call(widget.kategoriId);
       setState(() => kategori = result);
     } catch (e) {
       debugPrint('❌ Kategori yüklenirken hata: $e');
       setState(() => kategori = null);
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -65,7 +62,8 @@ class _KategoriDetailState extends State<KategoriDetail> {
               child: Text(local.translate('general_Confirm')),
               onPressed: () async {
                 if (kategori != null) {
-                  await _deleteKategoriUseCase(kategori!.id!);
+                  // ✅ ref.read ile silme işlemi
+                  await ref.read(deleteKategoriProvider).call(kategori!.id!);
                   if (mounted) {
                     Navigator.of(context).pop(); // dialog kapat
                     Navigator.of(context).pop(true); // önceki sayfaya dön
@@ -82,7 +80,6 @@ class _KategoriDetailState extends State<KategoriDetail> {
   @override
   Widget build(BuildContext context) {
     final local = AppLocalizations.of(context);
-
     if (isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -93,6 +90,7 @@ class _KategoriDetailState extends State<KategoriDetail> {
       return Scaffold(
         appBar: AppBar(
           title: Text(local.translate('general_category')),
+          backgroundColor: Colors.green.shade900,
         ),
         body: Center(
           child: Text(
@@ -115,6 +113,7 @@ class _KategoriDetailState extends State<KategoriDetail> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
+          color: Colors.white,
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -175,7 +174,9 @@ class _KategoriDetailState extends State<KategoriDetail> {
               const SizedBox(height: 12),
               _buildLabelValue(
                 local.translate('general_isFixed'),
-                kategori!.sabitMi ? 'Evet' : 'Hayır',
+                kategori!.sabitMi
+                    ? local.translate('general_yes')
+                    : local.translate('general_no'),
               ),
             ],
           ),

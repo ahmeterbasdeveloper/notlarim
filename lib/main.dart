@@ -4,20 +4,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:notlarim/localization/localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 
-import 'core/di/injection_container.dart' as di;
 import 'presentation/Screen/anamenu/ana_menu.dart';
 import 'presentation/Screen/splash/splash_screen.dart';
 
 void main() async {
   // ✅ DÜZELTME 1: Doğru method 'WidgetsFlutterBinding' sınıfındadır.
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-
-  // Native Splash ekranını ekranda tut (Beyaz ekranı engeller)
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-
-  await di.init();
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

@@ -1,9 +1,15 @@
 import 'package:flutter/foundation.dart'; // debugPrint için
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../domain/usecases/kullanici/login_user.dart';
-import '../../../../core/di/injection_container.dart';
 
+// UseCase
+import '../../../../domain/usecases/kullanici/login_user.dart';
+
+// ✅ DI Providers (GetIt yerine buradan okuyacağız)
+import '../../../../core/di/kullanici_di_providers.dart';
+
+// -----------------------------------------------------------------------------
 // 1. STATE
+// -----------------------------------------------------------------------------
 class LoginState {
   final bool isLoading;
   final bool? isSuccess;
@@ -28,23 +34,26 @@ class LoginState {
   }
 }
 
+// -----------------------------------------------------------------------------
 // 2. NOTIFIER
+// -----------------------------------------------------------------------------
 class LoginNotifier extends StateNotifier<LoginState> {
   final LoginUser _loginUser;
 
   LoginNotifier(this._loginUser) : super(LoginState());
 
-  Future<void> login(String email, String password) async {
-    debugPrint('🚀 Login İşlemi Başlatıldı: Email: $email'); // LOG 1
+  Future<void> login(String userName, String password) async {
+    debugPrint('🚀 Login İşlemi Başlatıldı: userName: $userName');
 
+    // Yükleniyor durumunu başlat, eski hataları temizle
     state =
         state.copyWith(isLoading: true, errorMessage: null, isSuccess: null);
 
     try {
       // UseCase çağırılır
-      final result = await _loginUser(email, password);
+      final result = await _loginUser.call(userName, password);
 
-      debugPrint('🔍 Login Sonucu: $result'); // LOG 2
+      debugPrint('🔍 Login Sonucu: $result');
 
       if (result) {
         state = state.copyWith(isLoading: false, isSuccess: true);
@@ -55,13 +64,17 @@ class LoginNotifier extends StateNotifier<LoginState> {
             errorMessage: 'Kullanıcı bulunamadı veya şifre yanlış.');
       }
     } catch (e) {
-      debugPrint('❌ Login Hatası: $e'); // LOG 3
+      debugPrint('❌ Login Hatası: $e');
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
 }
 
+// -----------------------------------------------------------------------------
 // 3. PROVIDER
+// -----------------------------------------------------------------------------
 final loginProvider = StateNotifierProvider<LoginNotifier, LoginState>((ref) {
-  return LoginNotifier(sl<LoginUser>());
+  final loginUser = ref.watch(loginUserProvider);
+
+  return LoginNotifier(loginUser);
 });

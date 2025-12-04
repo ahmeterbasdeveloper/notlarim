@@ -1,28 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 
-// Core
+// Core & Localization
 import '../../../core/utils/color_helper.dart';
 import '../../../localization/localization.dart';
 
 // Domain
 import '../../../domain/entities/oncelik.dart';
-import '../../../domain/usecases/oncelik/create_oncelik.dart';
-import '../../../domain/usecases/oncelik/update_oncelik.dart';
 
-// DI
-import '../../../core/di/injection_container.dart';
+// ✅ DI Providers
+import '../../../core/di/oncelik_di_providers.dart';
 
-class AddEditOncelik extends StatefulWidget {
+class AddEditOncelik extends ConsumerStatefulWidget {
   final Oncelik? oncelik;
 
   const AddEditOncelik({super.key, this.oncelik});
 
   @override
-  State<AddEditOncelik> createState() => _AddEditOncelikState();
+  ConsumerState<AddEditOncelik> createState() => _AddEditOncelikState();
 }
 
-class _AddEditOncelikState extends State<AddEditOncelik> {
+class _AddEditOncelikState extends ConsumerState<AddEditOncelik> {
   final _formKey = GlobalKey<FormState>();
 
   late String baslik;
@@ -31,14 +30,9 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
   late bool sabitMi;
   late Color selectedColor;
 
-  // ✅ UseCase'leri DI'dan çekiyoruz
-  final CreateOncelik _createOncelikUseCase = sl<CreateOncelik>();
-  final UpdateOncelik _updateOncelikUseCase = sl<UpdateOncelik>();
-
   @override
   void initState() {
     super.initState();
-
     baslik = widget.oncelik?.baslik ?? '';
     aciklama = widget.oncelik?.aciklama ?? '';
     renkKodu = widget.oncelik?.renkKodu ?? '';
@@ -50,19 +44,15 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.oncelik != null;
     final local = AppLocalizations.of(context);
+    final isEditing = widget.oncelik != null;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${local.translate('general_priority')} '
-          '${isEditing ? local.translate('general_update') : local.translate('general_add')}',
+          '${local.translate('general_priority')} ${isEditing ? local.translate('general_update') : local.translate('general_add')}',
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.amber,
-          ),
+              fontWeight: FontWeight.bold, fontSize: 20, color: Colors.amber),
         ),
         backgroundColor: Colors.green.shade900,
         leading: IconButton(
@@ -77,20 +67,21 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
           padding: const EdgeInsets.all(12),
           child: Container(
             decoration: BoxDecoration(
-              color: selectedColor.withOpacity(0.2),
+              // ✅ DÜZELTME: Deprecated 'withOpacity' yerine 'withValues'
+              color: selectedColor.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildBaslikField(context),
+                  _buildBaslikField(local),
                   const SizedBox(height: 12),
-                  _buildAciklamaField(context),
+                  _buildAciklamaField(local),
                   const SizedBox(height: 12),
-                  _buildRenkSecici(context),
+                  _buildRenkSecici(local),
                   const SizedBox(height: 20),
-                  _buildKaydetButton(context, isEditing),
+                  _buildKaydetButton(local, isEditing),
                 ],
               ),
             ),
@@ -99,8 +90,6 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
       ),
     );
   }
-
-  // ... _build... metodları aynı kalabilir, sadece _saveOncelik güncellenmeli:
 
   Future<void> _saveOncelik() async {
     final local = AppLocalizations.of(context);
@@ -117,10 +106,12 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
 
     try {
       if (widget.oncelik == null) {
-        await _createOncelikUseCase(oncelik);
+        // ✅ Generic Create
+        await ref.read(createOncelikProvider).call(oncelik);
         _showSnack(local.translate('general_saveSuccess'));
       } else {
-        await _updateOncelikUseCase(oncelik);
+        // ✅ Generic Update
+        await ref.read(updateOncelikProvider).call(oncelik);
         _showSnack(local.translate('general_updateSuccess'));
       }
       if (mounted) Navigator.pop(context, true);
@@ -130,9 +121,11 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
     }
   }
 
-  // ... Diğer yardımcı widget'lar:
-  Widget _buildBaslikField(BuildContext context) {
-    final local = AppLocalizations.of(context);
+  // ---------------------------------------------------------------------------
+  // 🧩 YARDIMCI WIDGET'LAR
+  // ---------------------------------------------------------------------------
+
+  Widget _buildBaslikField(AppLocalizations local) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -160,8 +153,7 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
     );
   }
 
-  Widget _buildAciklamaField(BuildContext context) {
-    final local = AppLocalizations.of(context);
+  Widget _buildAciklamaField(AppLocalizations local) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -189,8 +181,7 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
     );
   }
 
-  Widget _buildRenkSecici(BuildContext context) {
-    final local = AppLocalizations.of(context);
+  Widget _buildRenkSecici(AppLocalizations local) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -205,7 +196,7 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
                   color: Colors.black),
             ),
             ElevatedButton(
-              onPressed: () => _showColorPickerDialog(context),
+              onPressed: () => _showColorPickerDialog(local),
               child: Text(local.translate('general_chooseColorMessage')),
             ),
           ],
@@ -226,10 +217,8 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
     );
   }
 
-  Widget _buildKaydetButton(BuildContext context, bool isEditing) {
-    final local = AppLocalizations.of(context);
+  Widget _buildKaydetButton(AppLocalizations local, bool isEditing) {
     final isFormValid = baslik.isNotEmpty && aciklama.isNotEmpty;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: ElevatedButton(
@@ -248,8 +237,7 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
     );
   }
 
-  void _showColorPickerDialog(BuildContext context) {
-    final local = AppLocalizations.of(context);
+  void _showColorPickerDialog(AppLocalizations local) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -277,10 +265,7 @@ class _AddEditOncelikState extends State<AddEditOncelik> {
 
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 }

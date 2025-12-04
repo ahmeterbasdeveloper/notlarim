@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:notlarim/localization/localization.dart';
 
 // Login sayfasının doğru yolu (proje yapınıza göre kontrol edin)
@@ -20,9 +19,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Uygulama yüklenme işlemleri bittiğinde (burada 2 sn simüle ediyoruz)
     Timer(const Duration(seconds: 2), () {
-      // ✅ Native Splash ekranını kaldır
-      FlutterNativeSplash.remove();
-
       // Login ekranına yönlendir
       if (mounted) {
         Navigator.of(context).pushReplacement(

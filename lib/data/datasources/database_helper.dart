@@ -1,38 +1,28 @@
+// lib/data/datasources/database_helper.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:notlarim/domain/entities/hatirlatici.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
-// 🟢 Soyut arayüzü (interface)
+// Abstract Interface
 import '../../core/abstract_db_service.dart';
 
-// Güvenlik Yardımcısı (Şifre Hashleme için)
-import '../../core/utils/security_helper.dart';
+// ✅ YENİ: Parçalanmış mantık dosyaları import edildi
+import '../../core/database/db_schema.dart';
+import '../../core/database/db_defaults.dart';
 
-// Modeller
+// Modeller (Sadece getHatirlaticiId fonksiyonu için gerekli)
 import '../models/hatirlatici_model.dart';
-import '../models/kategori_model.dart';
-import '../models/kullanicilar.dart';
-import '../models/not_model.dart';
-import '../models/kontrol_liste_model.dart';
-import '../models/oncelik_model.dart';
-import '../models/durum_model.dart';
-import '../models/gorev_model.dart';
 
 /// DatabaseHelper sınıfı AbstractDBService arayüzünü uygular.
 class DatabaseHelper implements AbstractDBService {
-  /// Eğer 1 ise getApplicationDocumentsDirectory, 2 ise getDatabasesPath kullanılır
   static int pathDbDirectoryTip = 2;
-
   static const _databaseName = "notlar.db";
-
-  // 🚨 ÖNEMLİ: Hata düzeltildiği için versiyonu 4 yapın ki onUpgrade çalışsın.
-  // Veya uygulamayı silip yükleyecekseniz 3 kalabilir.
-  static const _databaseVersion = 1;
+  static const _databaseVersion = 2;
 
   static final DatabaseHelper instance = DatabaseHelper._init();
-
   static Database? _database;
 
   DatabaseHelper._init();
@@ -99,272 +89,20 @@ class DatabaseHelper implements AbstractDBService {
       print("♻️ Veritabanı güncelleniyor: v$oldVersion -> v$newVersion");
     }
 
-    // Tüm tabloları sil (Temiz başlangıç için)
-    await db.execute("DROP TABLE IF EXISTS $tableDurumlar");
-    await db.execute("DROP TABLE IF EXISTS $tableKategoriler");
-    await db.execute("DROP TABLE IF EXISTS $tableOncelik");
-    await db.execute("DROP TABLE IF EXISTS $tableKullanicilar");
-    await db.execute("DROP TABLE IF EXISTS $tableNotlar");
-    await db.execute("DROP TABLE IF EXISTS $tableKontrolListe");
-    await db.execute("DROP TABLE IF EXISTS $tableGorevler");
-    await db.execute("DROP TABLE IF EXISTS $tableHatirlaticilar");
+    // ✅ DbSchema üzerinden silme işlemi
+    await DbSchema.dropTables(db);
 
-    // Tabloları ve verileri yeniden oluştur
+    // ✅ Yeniden oluşturma
     await _onCreate(db, newVersion);
   }
 
-  /// 🧱 Veritabanı tablolarını oluştur
+  /// 🧱 Veritabanı oluşturulduğunda çalışır
   static Future<void> _onCreate(Database db, int version) async {
-    const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
-    const textType = 'TEXT NOT NULL';
-    const integerType = 'INTEGER NOT NULL';
+    // 1. Tabloları oluştur (DbSchema kullanılarak)
+    await DbSchema.createTables(db);
 
-    await db.execute('''
-      CREATE TABLE $tableDurumlar ( 
-        ${DurumAlanlar.id} $idType, 
-        ${DurumAlanlar.baslik} $textType,
-        ${DurumAlanlar.aciklama} $textType,
-        ${DurumAlanlar.renkKodu} $textType,
-        ${DurumAlanlar.kayitZamani} $textType,
-        ${DurumAlanlar.sabitMi} $integerType
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE $tableKategoriler  ( 
-        ${KategoriAlanlar.id} $idType, 
-        ${KategoriAlanlar.baslik} $textType,
-        ${KategoriAlanlar.aciklama} $textType,
-        ${KategoriAlanlar.renkKodu} $textType,
-        ${KategoriAlanlar.kayitZamani} $textType,
-        ${KategoriAlanlar.sabitMi} $integerType 
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE $tableOncelik ( 
-        ${OncelikAlanlar.id} $idType, 
-        ${OncelikAlanlar.baslik} $textType,
-        ${OncelikAlanlar.aciklama} $textType,
-        ${OncelikAlanlar.renkKodu} $textType,
-        ${OncelikAlanlar.kayitZamani} $textType,
-        ${OncelikAlanlar.sabitMi} $integerType
-      )
-    ''');
-
-    // ✅ DÜZELTME BURADA YAPILDI: Eksik kolonlar eklendi
-    await db.execute('''
-      CREATE TABLE $tableKullanicilar ( 
-        ${KullaniciAlanlar.id} $idType, 
-        ${KullaniciAlanlar.ad} $textType,
-        ${KullaniciAlanlar.soyad} $textType,
-        ${KullaniciAlanlar.email} $textType,
-        ${KullaniciAlanlar.password} $textType,
-        ${KullaniciAlanlar.userName} $textType,
-        ${KullaniciAlanlar.cepTelefon} $textType,
-        ${KullaniciAlanlar.fotoUrl} $textType
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE $tableNotlar ( 
-        ${NotAlanlar.id} $idType, 
-        ${NotAlanlar.kategoriId} $integerType,
-        ${NotAlanlar.oncelikId} $integerType,
-        ${NotAlanlar.baslik} $textType,
-        ${NotAlanlar.aciklama} $textType,
-        ${NotAlanlar.kayitZamani} $textType,
-        ${NotAlanlar.durumId} $integerType
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE $tableKontrolListe ( 
-        ${KontrolListeAlanlar.id} $idType, 
-        ${KontrolListeAlanlar.baslik} $textType,
-        ${KontrolListeAlanlar.aciklama} $textType,
-        ${KontrolListeAlanlar.kategoriId} $integerType,
-        ${KontrolListeAlanlar.oncelikId} $integerType,
-        ${KontrolListeAlanlar.kayitZamani} $textType,
-        ${KontrolListeAlanlar.durumId} $integerType
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE $tableGorevler ( 
-        ${GorevAlanlar.id} $idType, 
-        ${GorevAlanlar.grupId} $integerType,
-        ${GorevAlanlar.baslik} $textType,
-        ${GorevAlanlar.aciklama} $textType,
-        ${GorevAlanlar.kategoriId} $integerType,
-        ${GorevAlanlar.oncelikId} $integerType,
-        ${GorevAlanlar.baslamaTarihiZamani} $textType,
-        ${GorevAlanlar.bitisTarihiZamani} $textType,
-        ${GorevAlanlar.kayitZamani} $textType,
-        ${GorevAlanlar.durumId} $integerType
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE $tableHatirlaticilar  ( 
-        ${HatirlaticiAlanlar.id} $idType, 
-        ${HatirlaticiAlanlar.baslik} $textType,
-        ${HatirlaticiAlanlar.aciklama} $textType,
-        ${HatirlaticiAlanlar.kategoriId} $integerType,
-        ${HatirlaticiAlanlar.oncelikId} $integerType,
-        ${HatirlaticiAlanlar.hatirlatmaTarihiZamani} $textType,
-        ${HatirlaticiAlanlar.kayitZamani} $textType,
-        ${HatirlaticiAlanlar.durumId} $integerType
-      )
-    ''');
-
-    // Varsayılan kayıtları ekle
-    await _insertDefaults(db);
-  }
-
-  /// Varsayılan örnek veriler
-  static Future<void> _insertDefaults(Database db) async {
-    await db.transaction((txn) async {
-      final now = DateTime.now().toIso8601String();
-
-      // 🔹 Durumlar
-      final durumlar = [
-        {
-          'baslik': 'Yeni',
-          'aciklama': 'Yapılacak İş',
-          'renkKodu': '#E2945B',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'Süreç Devam Ediyor',
-          'aciklama': 'İş başladı ve devam ediyor.',
-          'renkKodu': '#AB582C',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'Süresi Belirsiz',
-          'aciklama': 'Belli bir süresi olmayan',
-          'renkKodu': '#35D217',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'Tamamlandı',
-          'aciklama': 'Tamamlanan İş',
-          'renkKodu': '#39C73F',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'İptal Edildi',
-          'aciklama': 'İşten vazgeçildi.',
-          'renkKodu': '#F067B0',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-      ];
-      for (final e in durumlar) {
-        await txn.insert(tableDurumlar, e);
-      }
-
-      // 🔹 Kategoriler
-      final kategoriler = [
-        {
-          'baslik': 'Özel',
-          'aciklama': 'Özel İşler',
-          'renkKodu': '#55DC67',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'Alışveriş',
-          'aciklama': 'Alışveriş İşleri',
-          'renkKodu': '#70DCFF',
-          'kayitZamani': now,
-          'sabitMi': 0
-        },
-      ];
-      for (final e in kategoriler) {
-        await txn.insert(tableKategoriler, e);
-      }
-
-      // 🔹 Öncelikler
-      final oncelikler = [
-        {
-          'baslik': 'Önemsiz',
-          'aciklama': 'Öncelik Önemsiz',
-          'renkKodu': '#DFD293',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'Düşük',
-          'aciklama': 'Öncelik Düşük',
-          'renkKodu': '#E1D37D',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'Orta',
-          'aciklama': 'Öncelik Orta',
-          'renkKodu': '#AACB70',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'Yüksek',
-          'aciklama': 'Öncelik Yüksek',
-          'renkKodu': '#73C25F',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-        {
-          'baslik': 'Acil',
-          'aciklama': 'Öncelik Acil',
-          'renkKodu': '#E4354F',
-          'kayitZamani': now,
-          'sabitMi': 1
-        },
-      ];
-      for (final e in oncelikler) {
-        await txn.insert(tableOncelik, e);
-      }
-
-      // 🔹 KULLANICILAR (Şifre Hashlenerek)
-      // Varsayılan bir admin kullanıcısı ekleyelim.
-      final hashedPassword = SecurityHelper.hashPassword('PassW0rd');
-
-      await txn.insert(tableKullanicilar, {
-        'ad': 'Admin',
-        'soyad': 'User',
-        'email': 'admin@gmail.com',
-        'password': hashedPassword,
-        'userName': 'admin',
-        'cepTelefon': '',
-        'fotoUrl': '',
-      });
-
-      // 🔹 Örnek Not
-      await txn.insert(tableNotlar, {
-        'kategoriId': 1,
-        'oncelikId': 1,
-        'baslik': 'İlk Not Başlığı',
-        'aciklama': 'İlk not açıklaması',
-        'kayitZamani': now,
-        'durumId': 1,
-      });
-    });
-  }
-
-  /// 📌 Tablo var mı kontrolü
-  static Future<bool> _tableExists(Database db, String tableName) async {
-    final result = await db.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-      [tableName],
-    );
-    return result.isNotEmpty;
+    // 2. Varsayılan verileri ekle (DbDefaults kullanılarak)
+    await DbDefaults.insertDefaultData(db);
   }
 
   /// 🔒 Bağlantıyı kapatır
@@ -372,8 +110,9 @@ class DatabaseHelper implements AbstractDBService {
     if (_database != null && _database!.isOpen) {
       await _database!.close();
       _database = null;
-      if (kDebugMode)
+      if (kDebugMode) {
         print('🧱 DatabaseHelper: Veritabanı bağlantısı kapatıldı');
+      }
     }
   }
 
@@ -381,8 +120,9 @@ class DatabaseHelper implements AbstractDBService {
   Future<void> reopen() async {
     await close();
     _database = await _initDB(_databaseName);
-    if (kDebugMode)
+    if (kDebugMode) {
       print('🔄 DatabaseHelper: Veritabanı bağlantısı yeniden açıldı');
+    }
   }
 
   // ---------------------------------------------------------------------------

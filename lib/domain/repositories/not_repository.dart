@@ -1,13 +1,12 @@
+// lib/domain/repositories/not_repository.dart
+
 import '../entities/not.dart';
+import 'base_repository.dart'; // ✅ BaseRepository import edilmeli
 
-/// Domain Katmanında: yalnızca soyutlama (interface) bulunur.
-/// Veri kaynağı (SQLite, API, vb.) burada bilinmez.
-abstract class NotRepository {
-  /// ID’ye göre not getir
-  Future<Not?> getNotById(int id);
-
-  /// Tüm notları getir
-  Future<List<Not>> getAllNotlar();
+/// Domain Katmanında: Repository Interface
+/// ✅ BaseRepository<Not>'tan miras alarak standart CRUD işlemlerini otomatik kazanır.
+abstract class NotRepository extends BaseRepository<Not> {
+  // 👇 Sadece Not Entity'sine özel (Generic olmayan) iş mantığı metodları kalmalı:
 
   /// Başlığa göre arama
   Future<List<Not>> searchNotlar(String searchText);
@@ -20,13 +19,4 @@ abstract class NotRepository {
 
   /// Duruma göre filtreleme
   Future<List<Not>> getNotlarByDurum(int durumId);
-
-  /// Yeni not oluştur
-  Future<Not> createNot(Not not);
-
-  /// Not güncelle
-  Future<int> updateNot(Not not);
-
-  /// Not sil
-  Future<int> deleteNot(int id);
 }

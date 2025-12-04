@@ -1,32 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
+import 'package:notlarim/core/di/kategori_di_providers.dart';
+import 'package:notlarim/core/di/oncelik_di_providers.dart';
 import 'package:notlarim/localization/localization.dart';
 
 // Domain
 import '../../../../domain/entities/gorev.dart';
-import '../../../../domain/usecases/gorev/create_gorev.dart';
-import '../../../../domain/usecases/gorev/update_gorev.dart';
-import '../../../../domain/usecases/kategori/get_all_kategori.dart';
-import '../../../../domain/usecases/oncelik/get_all_oncelik.dart';
+import '../../../../domain/entities/kategori.dart';
+import '../../../../domain/entities/oncelik.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ DI Providers
+import '../../../../core/di/gorev_di_providers.dart';
 
 // UI
 import 'gorev_form.dart';
 
-class GorevAddEdit extends StatefulWidget {
+class GorevAddEdit extends ConsumerStatefulWidget {
   final Gorev? gorev;
-
-  const GorevAddEdit({
-    super.key,
-    this.gorev,
-  });
+  const GorevAddEdit({super.key, this.gorev});
 
   @override
-  State<GorevAddEdit> createState() => _GorevAddEditState();
+  ConsumerState<GorevAddEdit> createState() => _GorevAddEditState();
 }
 
-class _GorevAddEditState extends State<GorevAddEdit> {
+class _GorevAddEditState extends ConsumerState<GorevAddEdit> {
   final _formKey = GlobalKey<FormState>();
 
   late int grupId;
@@ -37,16 +34,14 @@ class _GorevAddEditState extends State<GorevAddEdit> {
   late DateTime baslamaTarihiZamani;
   late DateTime bitisTarihiZamani;
 
-  // UseCase'leri DI'dan çekiyoruz
-  final CreateGorev _createGorevUseCase = sl<CreateGorev>();
-  final UpdateGorev _updateGorevUseCase = sl<UpdateGorev>();
-  final GetAllKategori _getAllKategoriUseCase = sl<GetAllKategori>();
-  final GetAllOncelik _getAllOncelikUseCase = sl<GetAllOncelik>();
+  // Dropdown listeleri
+  List<Kategori> _kategoriList = [];
+  List<Oncelik> _oncelikList = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-
     grupId = widget.gorev?.grupId ?? 0;
     baslik = widget.gorev?.baslik ?? '';
     aciklama = widget.gorev?.aciklama ?? '';
@@ -54,6 +49,33 @@ class _GorevAddEditState extends State<GorevAddEdit> {
     oncelikId = widget.gorev?.oncelikId ?? 0;
     baslamaTarihiZamani = widget.gorev?.baslamaTarihiZamani ?? DateTime.now();
     bitisTarihiZamani = widget.gorev?.bitisTarihiZamani ?? DateTime.now();
+
+    _loadDropdownData();
+  }
+
+  Future<void> _loadDropdownData() async {
+    try {
+      // ✅ Generic UseCase Provider'larını çağırıyoruz
+      final kategoriler = await ref.read(getAllKategoriProvider).call();
+      final oncelikler = await ref.read(getAllOncelikProvider).call();
+
+      if (mounted) {
+        setState(() {
+          _kategoriList = kategoriler;
+          _oncelikList = oncelikler;
+
+          // Eğer yeni kayıt ise varsayılan değerleri ata
+          if (widget.gorev == null) {
+            if (_kategoriList.isNotEmpty) kategoriId = _kategoriList.first.id!;
+            if (_oncelikList.isNotEmpty) oncelikId = _oncelikList.first.id!;
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Veri yükleme hatası: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -75,59 +97,62 @@ class _GorevAddEditState extends State<GorevAddEdit> {
         ),
         backgroundColor: Colors.green.shade900,
       ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              GorevlerForm(
-                baslik: baslik,
-                aciklama: aciklama,
-                kategoriId: kategoriId,
-                oncelikId: oncelikId,
-                baslamaTarihiZamani: baslamaTarihiZamani,
-                bitisTarihiZamani: bitisTarihiZamani,
-                onChangedBaslik: (v) => setState(() => baslik = v),
-                onChangedAciklama: (v) => setState(() => aciklama = v),
-                onChangedKategori: (v) => setState(() => kategoriId = v),
-                onChangedOncelik: (v) => setState(() => oncelikId = v),
-                onChangedBaslamaTarihiZamani: (v) =>
-                    setState(() => baslamaTarihiZamani = v),
-                onChangedBitisTarihiZamani: (v) =>
-                    setState(() => bitisTarihiZamani = v),
-                getAllKategoriUseCase: _getAllKategoriUseCase,
-                getAllOncelikUseCase: _getAllOncelikUseCase,
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: baslik.isNotEmpty && aciklama.isNotEmpty
-                        ? Colors.indigo.shade600
-                        : Colors.grey.shade600,
-                  ),
-                  onPressed: baslik.isNotEmpty && aciklama.isNotEmpty
-                      ? _saveGorev
-                      : null,
-                  child: Text(
-                    local.translate('general_save'),
-                    style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
-                  ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    GorevlerForm(
+                      baslik: baslik,
+                      aciklama: aciklama,
+                      kategoriId: kategoriId,
+                      oncelikId: oncelikId,
+                      baslamaTarihiZamani: baslamaTarihiZamani,
+                      bitisTarihiZamani: bitisTarihiZamani,
+
+                      // Değer değişikliklerini dinle
+                      onChangedBaslik: (v) => baslik = v,
+                      onChangedAciklama: (v) => aciklama = v,
+                      onChangedKategori: (v) => kategoriId = v,
+                      onChangedOncelik: (v) => oncelikId = v,
+                      onChangedBaslamaTarihiZamani: (v) =>
+                          baslamaTarihiZamani = v,
+                      onChangedBitisTarihiZamani: (v) => bitisTarihiZamani = v,
+
+                      // ✅ Listeleri gönderiyoruz (UseCase DEĞİL)
+                      kategoriListesi: _kategoriList,
+                      oncelikListesi: _oncelikList,
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo.shade600,
+                        ),
+                        onPressed: _saveGorev,
+                        child: Text(
+                          local.translate('general_save'),
+                          style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 
   Future<void> _saveGorev() async {
+    if (!_formKey.currentState!.validate()) return;
+
     final entity = Gorev(
       id: widget.gorev?.id,
       grupId: grupId,
@@ -143,17 +168,18 @@ class _GorevAddEditState extends State<GorevAddEdit> {
 
     try {
       if (widget.gorev != null) {
-        await _updateGorevUseCase(entity);
+        // ✅ ref.read Generic Update
+        await ref.read(updateGorevProvider).call(entity);
       } else {
-        await _createGorevUseCase(entity);
+        // ✅ ref.read Generic Create
+        await ref.read(createGorevProvider).call(entity);
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       debugPrint('❌ Görev kaydedilirken hata: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('❌ $e')));
       }
     }
   }

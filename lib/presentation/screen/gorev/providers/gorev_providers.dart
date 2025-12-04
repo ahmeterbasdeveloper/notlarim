@@ -1,13 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../domain/entities/gorev.dart';
 
-// UseCase'ler
-import '../../../../domain/usecases/gorev/get_all_gorev.dart';
+// ✅ Generic UseCase
+import '../../../../core/usecases/crud_usecases.dart';
+// ✅ DI Providers
+import '../../../../core/di/gorev_di_providers.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
-
-// 1. STATE: UI'ın ihtiyaç duyduğu veriler
+// 1. STATE
 class GorevState {
   final List<Gorev> gorevler;
   final bool isLoading;
@@ -32,9 +31,9 @@ class GorevState {
   }
 }
 
-// 2. NOTIFIER: İş Mantığı
+// 2. NOTIFIER
 class GorevNotifier extends StateNotifier<GorevState> {
-  final GetAllGorev _getAllGorev;
+  final GetAllUseCase<Gorev> _getAllGorev;
 
   GorevNotifier(this._getAllGorev) : super(GorevState()) {
     loadGorevler();
@@ -43,9 +42,11 @@ class GorevNotifier extends StateNotifier<GorevState> {
   Future<void> loadGorevler() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final result = await _getAllGorev();
-      // Tarihe göre sıralama vb. burada yapılabilir
-      // result.sort((a, b) => b.kayitZamani.compareTo(a.kayitZamani));
+      final result = await _getAllGorev.call();
+      // Tarihe göre sıralama (İsteğe bağlı)
+      result.sort(
+          (a, b) => a.baslamaTarihiZamani.compareTo(b.baslamaTarihiZamani));
+
       state = state.copyWith(isLoading: false, gorevler: result);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
@@ -53,9 +54,10 @@ class GorevNotifier extends StateNotifier<GorevState> {
   }
 }
 
-// 3. PROVIDER: UI'ın kullanacağı nesne
+// 3. PROVIDER
 final gorevNotifierProvider =
     StateNotifierProvider<GorevNotifier, GorevState>((ref) {
-  // UseCase'i GetIt (sl) üzerinden çekip Notifier'a veriyoruz
-  return GorevNotifier(sl<GetAllGorev>());
+  // Generic Provider'ı çağırıyoruz
+  final getAllGorev = ref.watch(getAllGorevProvider);
+  return GorevNotifier(getAllGorev);
 });

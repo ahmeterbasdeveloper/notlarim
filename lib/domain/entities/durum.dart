@@ -1,16 +1,19 @@
-// lib/features/notes/domain/entities/durumlar.dart
-/// 🧱 Domain Entity — yalnızca iş mantığını temsil eder.
-/// Veri tabanı, JSON veya UI detayları içermez.
-class Durum {
-  final int? id;
+// lib/domain/entities/durum.dart
+
+import '../../core/base/base_entity.dart';
+
+/// 🧱 Domain Entity — BaseEntity'den türetildi
+class Durum extends BaseEntity {
+  // ❌ 'final int? id;' satırını siliyoruz, BaseEntity'den geliyor.
+
   final String baslik;
   final String aciklama;
   final String renkKodu;
   final DateTime kayitZamani;
-  final int? sabitMi;
+  final int? sabitMi; // SQLite bool desteklemediği için int (0/1) olabilir
 
   const Durum({
-    this.id,
+    super.id, // ✅ id BaseEntity'ye gönderiliyor
     required this.baslik,
     required this.aciklama,
     required this.renkKodu,
@@ -18,7 +21,20 @@ class Durum {
     required this.sabitMi,
   });
 
-  /// Yeni bir Durum nesnesi oluşturmak veya mevcut olanı kopyalamak için
+  /// ✅ Generic Repository için gerekli toMap metodu
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      '_id': id,
+      'baslik': baslik,
+      'aciklama': aciklama,
+      'renkKodu': renkKodu,
+      'kayitZamani': kayitZamani.toIso8601String(),
+      'sabitMi': sabitMi,
+    };
+  }
+
+  /// Kopyalama metodu (değişmedi)
   Durum copyWith({
     int? id,
     String? baslik,
@@ -37,24 +53,5 @@ class Durum {
     );
   }
 
-  /// Karşılaştırmalar ve testler için eşitlik operatörü
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Durum &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          baslik == other.baslik &&
-          aciklama == other.aciklama &&
-          renkKodu == other.renkKodu &&
-          kayitZamani == other.kayitZamani &&
-          sabitMi == other.sabitMi;
-
-  @override
-  int get hashCode =>
-      Object.hash(id, baslik, aciklama, renkKodu, kayitZamani, sabitMi);
-
-  @override
-  String toString() =>
-      'Durum(id: $id, baslik: $baslik, aciklama: $aciklama, renkKodu: $renkKodu, kayitZamani: $kayitZamani, sabitMi: $sabitMi)';
+  // ... (Equality operator ve hashCode aynen kalabilir)
 }

@@ -1,12 +1,11 @@
-import '../entities/kategori.dart';
+// lib/domain/repositories/kategori_repository.dart
 
-/// Domain katmanındaki soyut repository arayüzü.
-/// Sadece Entity ile çalışır — veritabanı veya model bilgisi içermez.
-abstract class KategoriRepository {
+import '../entities/kategori.dart';
+import 'base_repository.dart';
+
+abstract class KategoriRepository extends BaseRepository<Kategori> {
+  // ❌ create, update, delete, getAll, getById metodlarını SİLİN.
+
+  // 👇 Sadece özel metodlar kalmalı:
   Future<Kategori> getIlkKategori();
-  Future<Kategori> getKategoriById(int id);
-  Future<List<Kategori>> getAllKategori();
-  Future<Kategori> createKategori(Kategori kategori);
-  Future<int> updateKategori(Kategori kategori);
-  Future<int> deleteKategori(int id);
 }

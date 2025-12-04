@@ -1,7 +1,9 @@
-/// 🧱 Domain Entity — yalnızca iş mantığını temsil eder.
-/// Veri tabanı, JSON veya UI detayları içermez.
-class Oncelik {
-  final int? id;
+import '../../core/base/base_entity.dart';
+
+/// 🧱 Domain Entity
+class Oncelik extends BaseEntity {
+  // ❌ 'final int? id;' satırını siliyoruz, BaseEntity'den geliyor.
+
   final String baslik;
   final String aciklama;
   final String renkKodu;
@@ -9,7 +11,7 @@ class Oncelik {
   final bool sabitMi;
 
   const Oncelik({
-    this.id,
+    super.id, // ✅ id BaseEntity'ye
     required this.baslik,
     required this.aciklama,
     required this.renkKodu,
@@ -17,7 +19,19 @@ class Oncelik {
     required this.sabitMi,
   });
 
-  /// Yeni bir Oncelikler nesnesi oluşturmak veya mevcut olanı kopyalamak için
+  /// ✅ Generic Repository için gerekli toMap
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      '_id': id,
+      'baslik': baslik,
+      'aciklama': aciklama,
+      'renkKodu': renkKodu,
+      'kayitZamani': kayitZamani.toIso8601String(),
+      'sabitMi': sabitMi ? 1 : 0, // SQLite için bool -> int dönüşümü
+    };
+  }
+
   Oncelik copyWith({
     int? id,
     String? baslik,
@@ -35,25 +49,4 @@ class Oncelik {
       sabitMi: sabitMi ?? this.sabitMi,
     );
   }
-
-  /// Karşılaştırmalar ve testler için eşitlik operatörü
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Oncelik &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          baslik == other.baslik &&
-          aciklama == other.aciklama &&
-          renkKodu == other.renkKodu &&
-          kayitZamani == other.kayitZamani &&
-          sabitMi == other.sabitMi;
-
-  @override
-  int get hashCode =>
-      Object.hash(id, baslik, aciklama, renkKodu, kayitZamani, sabitMi);
-
-  @override
-  String toString() =>
-      'Oncelikler(id: $id, baslik: $baslik, aciklama: $aciklama, renkKodu: $renkKodu, kayitZamani: $kayitZamani, sabitMi: $sabitMi)';
 }

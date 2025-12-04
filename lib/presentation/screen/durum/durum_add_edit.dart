@@ -1,28 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import '../../../../localization/localization.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 
-// Core
+// Core & Localization
 import '../../../../core/utils/color_helper.dart';
+import '../../../../localization/localization.dart';
 
 // Domain
 import '../../../../domain/entities/durum.dart';
-import '../../../../domain/usecases/durum/create_durum.dart';
-import '../../../../domain/usecases/durum/update_durum.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ DI Providers
+import '../../../../core/di/durum_di_providers.dart';
 
-class AddEditDurum extends StatefulWidget {
+class AddEditDurum extends ConsumerStatefulWidget {
   final Durum? durum;
 
   const AddEditDurum({super.key, this.durum});
 
   @override
-  State<AddEditDurum> createState() => _AddEditDurumState();
+  ConsumerState<AddEditDurum> createState() => _AddEditDurumState();
 }
 
-class _AddEditDurumState extends State<AddEditDurum> {
+class _AddEditDurumState extends ConsumerState<AddEditDurum> {
   final _formKey = GlobalKey<FormState>();
 
   late String baslik;
@@ -30,14 +29,9 @@ class _AddEditDurumState extends State<AddEditDurum> {
   late String renkKodu;
   late Color selectedColor;
 
-  // ✅ UseCase'leri DI'dan çekiyoruz
-  final CreateDurum _createDurumUseCase = sl<CreateDurum>();
-  final UpdateDurum _updateDurumUseCase = sl<UpdateDurum>();
-
   @override
   void initState() {
     super.initState();
-
     baslik = widget.durum?.baslik ?? '';
     aciklama = widget.durum?.aciklama ?? '';
     renkKodu = widget.durum?.renkKodu ?? '';
@@ -48,8 +42,8 @@ class _AddEditDurumState extends State<AddEditDurum> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.durum != null;
     final local = AppLocalizations.of(context);
+    final isEditing = widget.durum != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -72,20 +66,23 @@ class _AddEditDurumState extends State<AddEditDurum> {
           padding: const EdgeInsets.all(12),
           child: Container(
             decoration: BoxDecoration(
-              color: selectedColor.withOpacity(0.2),
+              // ✅ DÜZELTME: Deprecated 'withOpacity' yerine 'withValues'
+              color: selectedColor.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildBaslikField(context),
+                  _buildBaslikField(local),
                   const SizedBox(height: 12),
-                  _buildAciklamaField(context),
+                  // ✅ EKSİK OLAN METOD EKLENDİ
+                  _buildAciklamaField(local),
                   const SizedBox(height: 12),
-                  _buildRenkSecici(context),
+                  // ✅ EKSİK OLAN METOD EKLENDİ
+                  _buildRenkSecici(local),
                   const SizedBox(height: 20),
-                  _buildKaydetButton(context, isEditing),
+                  _buildKaydetButton(local, isEditing),
                 ],
               ),
             ),
@@ -95,41 +92,11 @@ class _AddEditDurumState extends State<AddEditDurum> {
     );
   }
 
-  // ... (Geri kalan _build... metodları aynı kalabilir, değişiklik yok)
-  // Yer kazanmak için tekrarlamıyorum, sadece _saveDurum güncellenmeli:
+  // ---------------------------------------------------------------------------
+  // 🧩 YARDIMCI WIDGET'LAR (EKSİKLER TAMAMLANDI)
+  // ---------------------------------------------------------------------------
 
-  Future<void> _saveDurum() async {
-    final local = AppLocalizations.of(context);
-    if (!_formKey.currentState!.validate()) return;
-
-    final durum = Durum(
-      id: widget.durum?.id,
-      baslik: baslik,
-      aciklama: aciklama,
-      renkKodu: renkKodu,
-      kayitZamani: DateTime.now(),
-      sabitMi: widget.durum?.sabitMi ?? 0,
-    );
-
-    try {
-      if (widget.durum == null) {
-        await _createDurumUseCase(durum);
-        _showSnack(local.translate('general_saveSuccess'));
-      } else {
-        await _updateDurumUseCase(durum);
-        _showSnack(local.translate('general_updateSuccess'));
-      }
-      if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      debugPrint('❌ Durum kaydedilemedi: $e');
-      _showSnack(local.translate('general_errorMessage'));
-    }
-  }
-
-  // ... (Diğer yardımcı metodlar: _buildBaslikField, _showColorPickerDialog vb. aynı)
-
-  Widget _buildBaslikField(BuildContext context) {
-    final local = AppLocalizations.of(context);
+  Widget _buildBaslikField(AppLocalizations local) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -157,8 +124,8 @@ class _AddEditDurumState extends State<AddEditDurum> {
     );
   }
 
-  Widget _buildAciklamaField(BuildContext context) {
-    final local = AppLocalizations.of(context);
+  // 🟢 EKLENEN METOD 1: Açıklama Alanı
+  Widget _buildAciklamaField(AppLocalizations local) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -186,8 +153,8 @@ class _AddEditDurumState extends State<AddEditDurum> {
     );
   }
 
-  Widget _buildRenkSecici(BuildContext context) {
-    final local = AppLocalizations.of(context);
+  // 🟢 EKLENEN METOD 2: Renk Seçici
+  Widget _buildRenkSecici(AppLocalizations local) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -202,7 +169,7 @@ class _AddEditDurumState extends State<AddEditDurum> {
                   color: Colors.black),
             ),
             ElevatedButton(
-              onPressed: () => _showColorPickerDialog(context),
+              onPressed: () => _showColorPickerDialog(local),
               child: Text(local.translate('general_chooseColorMessage')),
             ),
           ],
@@ -223,8 +190,7 @@ class _AddEditDurumState extends State<AddEditDurum> {
     );
   }
 
-  Widget _buildKaydetButton(BuildContext context, bool isEditing) {
-    final local = AppLocalizations.of(context);
+  Widget _buildKaydetButton(AppLocalizations local, bool isEditing) {
     final isFormValid = baslik.isNotEmpty && aciklama.isNotEmpty;
 
     return Padding(
@@ -245,8 +211,38 @@ class _AddEditDurumState extends State<AddEditDurum> {
     );
   }
 
-  void _showColorPickerDialog(BuildContext context) {
+  Future<void> _saveDurum() async {
     final local = AppLocalizations.of(context);
+    if (!_formKey.currentState!.validate()) return;
+
+    final durum = Durum(
+      id: widget.durum?.id,
+      baslik: baslik,
+      aciklama: aciklama,
+      renkKodu: renkKodu,
+      kayitZamani: DateTime.now(),
+      sabitMi: widget.durum?.sabitMi ?? 0,
+    );
+
+    try {
+      if (widget.durum == null) {
+        // ✅ Generic Create Provider
+        await ref.read(createDurumProvider).call(durum);
+        _showSnack(local.translate('general_saveSuccess'));
+      } else {
+        // ✅ Generic Update Provider
+        await ref.read(updateDurumProvider).call(durum);
+        _showSnack(local.translate('general_updateSuccess'));
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      debugPrint('❌ Durum kaydedilemedi: $e');
+      _showSnack(local.translate('general_errorMessage'));
+    }
+  }
+
+  // 🟢 EKLENEN METOD 3: Renk Seçim Dialogu
+  void _showColorPickerDialog(AppLocalizations local) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(

@@ -1,6 +1,9 @@
+import '../../core/base/base_entity.dart';
+
 /// 🧠 Domain katmanı - KontrolListe Entity
-class KontrolListe {
-  final int? id;
+class KontrolListe extends BaseEntity {
+  // ❌ 'final int? id;' satırını siliyoruz, BaseEntity'den geliyor.
+
   final int kategoriId;
   final int oncelikId;
   final String baslik;
@@ -9,7 +12,7 @@ class KontrolListe {
   final int durumId;
 
   const KontrolListe({
-    this.id,
+    super.id, // ✅ id BaseEntity'ye
     required this.kategoriId,
     required this.oncelikId,
     required this.baslik,
@@ -17,6 +20,20 @@ class KontrolListe {
     required this.kayitZamani,
     required this.durumId,
   });
+
+  /// ✅ Generic Repository için gerekli
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      '_id': id,
+      'kategoriId': kategoriId,
+      'oncelikId': oncelikId,
+      'baslik': baslik,
+      'aciklama': aciklama,
+      'kayitZamani': kayitZamani.toIso8601String(),
+      'durumId': durumId,
+    };
+  }
 
   KontrolListe copyWith({
     int? id,

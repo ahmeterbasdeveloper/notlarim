@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ 1. Riverpod Eklendi
+import 'package:notlarim/core/di/oncelik_di_providers.dart';
+
 import '../../../../core/config/app_config.dart';
 import '../../../../core/utils/color_helper.dart';
 import '../../../../localization/localization.dart';
@@ -6,36 +9,26 @@ import '../../../../localization/localization.dart';
 // 🧠 Domain Entities
 import '../../../domain/entities/not.dart';
 
-// 🧠 Domain UseCases
-import '../../../domain/usecases/not/get_not_by_id.dart';
-import '../../../domain/usecases/oncelik/get_oncelik_by_id.dart';
-import '../../../domain/usecases/not/delete_not.dart';
-
-// DI
-import '../../../../core/di/injection_container.dart';
+// 🔌 DI Providers (Generic UseCase'lere erişim için)
+import '../../../../core/di/not_di_providers.dart'; // ✅ 2. Provider Dosyası
 
 // 📄 UI
 import 'not_add_edit.dart';
 
-class NotDetail extends StatefulWidget {
+// ✅ 3. ConsumerStatefulWidget yapıldı
+class NotDetail extends ConsumerStatefulWidget {
   final int noteId;
 
   const NotDetail({super.key, required this.noteId});
 
   @override
-  State<NotDetail> createState() => _NotDetailState();
+  ConsumerState<NotDetail> createState() => _NotDetailState();
 }
 
-class _NotDetailState extends State<NotDetail> {
+class _NotDetailState extends ConsumerState<NotDetail> {
   bool isLoading = false;
   Not? not;
   Color selectedColor = Colors.greenAccent;
-
-  // ✅ UseCase'leri DI Container'dan çekiyoruz
-  // Artık burada manuel Repository oluşturma YOK.
-  final GetNotById _getNotByIdUseCase = sl<GetNotById>();
-  final GetOncelikById _getOncelikByIdUseCase = sl<GetOncelikById>();
-  final DeleteNot _deleteNotUseCase = sl<DeleteNot>();
 
   @override
   void initState() {
@@ -47,10 +40,16 @@ class _NotDetailState extends State<NotDetail> {
   Future<void> _loadNote() async {
     setState(() => isLoading = true);
     try {
-      final fetchedNote = await _getNotByIdUseCase(widget.noteId);
+      // ✅ 4. UseCase'i Riverpod üzerinden okuyoruz
+      // ref.read kullanarak provider'daki UseCase'i çağırıyoruz
+      final fetchedNote =
+          await ref.read(getNotByIdProvider).call(widget.noteId);
+
       if (fetchedNote == null) throw Exception('Note not found');
 
-      final oncelik = await _getOncelikByIdUseCase(fetchedNote.oncelikId);
+      // Öncelik bilgisini (rengi) çekiyoruz
+      final oncelik =
+          await ref.read(getOncelikByIdProvider).call(fetchedNote.oncelikId);
       final renk = ColorHelper.hexToColor(oncelik?.renkKodu ?? '#A5D6A7');
 
       if (mounted) {
@@ -97,7 +96,9 @@ class _NotDetailState extends State<NotDetail> {
     );
 
     if (result == true) {
-      await _deleteNotUseCase(widget.noteId);
+      // ✅ 5. Silme işlemi için Riverpod Provider'ı kullanılıyor
+      await ref.read(deleteNotProvider).call(widget.noteId);
+
       if (mounted) Navigator.pop(context, true);
     }
   }
@@ -190,7 +191,6 @@ class _NotDetailState extends State<NotDetail> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              // Artık parametre göndermeye gerek yok, AddEdit ekranı kendi DI'ını yapıyor
               builder: (_) => NotAddEdit(not: not!),
             ),
           ).then((_) => _loadNote());

@@ -1,28 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 
 // Core & Localization
 import '../../../core/utils/color_helper.dart';
 import '../../../localization/localization.dart';
 
-// Domain
+// Domain Entity
 import '../../../domain/entities/kategori.dart';
-import '../../../domain/usecases/kategori/create_kategori.dart';
-import '../../../domain/usecases/kategori/update_kategori.dart';
 
-// DI
-import '../../../core/di/injection_container.dart';
+// ✅ DI Provider (Generic UseCases)
+import '../../../core/di/kategori_di_providers.dart';
 
-class AddEditKategori extends StatefulWidget {
+class AddEditKategori extends ConsumerStatefulWidget {
   final Kategori? kategori;
 
   const AddEditKategori({super.key, this.kategori});
 
   @override
-  State<AddEditKategori> createState() => _AddEditKategoriState();
+  ConsumerState<AddEditKategori> createState() => _AddEditKategoriState();
 }
 
-class _AddEditKategoriState extends State<AddEditKategori> {
+class _AddEditKategoriState extends ConsumerState<AddEditKategori> {
   final _formKey = GlobalKey<FormState>();
 
   late String baslik;
@@ -30,14 +29,9 @@ class _AddEditKategoriState extends State<AddEditKategori> {
   late String renkKodu;
   late Color selectedColor;
 
-  // ✅ UseCase'leri DI'dan çekiyoruz
-  final CreateKategori _createKategoriUseCase = sl<CreateKategori>();
-  final UpdateKategori _updateKategoriUseCase = sl<UpdateKategori>();
-
   @override
   void initState() {
     super.initState();
-
     baslik = widget.kategori?.baslik ?? '';
     aciklama = widget.kategori?.aciklama ?? '';
     renkKodu = widget.kategori?.renkKodu ?? '';
@@ -61,6 +55,7 @@ class _AddEditKategoriState extends State<AddEditKategori> {
         backgroundColor: Colors.green.shade900,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
+          color: Colors.white, // İkon rengi düzeltildi
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -91,6 +86,10 @@ class _AddEditKategoriState extends State<AddEditKategori> {
       ),
     );
   }
+
+  // ... (TextField Widget'ları aynen kalabilir - Değişiklik yok) ...
+  // Yer kazanmak için _buildBaslikField vb. kodlarını tekrar yazmıyorum,
+  // dosyadaki eski halleriyle kalabilirler.
 
   Widget _buildBaslikField(AppLocalizations local) => TextFormField(
         initialValue: baslik,
@@ -148,7 +147,6 @@ class _AddEditKategoriState extends State<AddEditKategori> {
   Widget _buildKaydetButton(AppLocalizations local, bool isEditing) {
     final isFormValid =
         baslik.isNotEmpty && aciklama.isNotEmpty && renkKodu.isNotEmpty;
-
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor:
@@ -178,9 +176,11 @@ class _AddEditKategoriState extends State<AddEditKategori> {
 
     try {
       if (widget.kategori == null) {
-        await _createKategoriUseCase(kategori);
+        // ✅ ref.read ile Create Provider çağrısı
+        await ref.read(createKategoriProvider).call(kategori);
       } else {
-        await _updateKategoriUseCase(kategori);
+        // ✅ ref.read ile Update Provider çağrısı
+        await ref.read(updateKategoriProvider).call(kategori);
       }
 
       if (mounted) Navigator.pop(context, true);

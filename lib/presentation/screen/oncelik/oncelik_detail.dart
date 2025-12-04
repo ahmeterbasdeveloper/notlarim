@@ -1,35 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 import '../../../../localization/localization.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/utils/color_helper.dart';
 
 // Domain
 import '../../../domain/entities/oncelik.dart';
-import '../../../domain/usecases/oncelik/get_oncelik_by_id.dart';
-import '../../../domain/usecases/oncelik/delete_oncelik.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ DI Providers
+import '../../../../core/di/oncelik_di_providers.dart';
 
 // UI
 import '../oncelik/oncelik_add_edit.dart';
 
-class OncelikDetail extends StatefulWidget {
+class OncelikDetail extends ConsumerStatefulWidget {
   final int oncelikId;
 
   const OncelikDetail({super.key, required this.oncelikId});
 
   @override
-  State<OncelikDetail> createState() => _OncelikDetailState();
+  ConsumerState<OncelikDetail> createState() => _OncelikDetailState();
 }
 
-class _OncelikDetailState extends State<OncelikDetail> {
+class _OncelikDetailState extends ConsumerState<OncelikDetail> {
   Oncelik? oncelik;
   bool isLoading = false;
-
-  // ✅ UseCase'ler DI'dan
-  final GetOncelikById _getOncelikByIdUseCase = sl<GetOncelikById>();
-  final DeleteOncelik _deleteOncelikUseCase = sl<DeleteOncelik>();
 
   @override
   void initState() {
@@ -40,13 +35,15 @@ class _OncelikDetailState extends State<OncelikDetail> {
   Future<void> _refreshOncelik() async {
     setState(() => isLoading = true);
     try {
-      final result = await _getOncelikByIdUseCase(widget.oncelikId);
+      // ✅ ref.read Generic GetById
+      final result =
+          await ref.read(getOncelikByIdProvider).call(widget.oncelikId);
       setState(() => oncelik = result);
     } catch (e) {
       debugPrint('❌ Öncelik yüklenirken hata: $e');
       setState(() => oncelik = null);
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -68,10 +65,11 @@ class _OncelikDetailState extends State<OncelikDetail> {
               child: Text(local.translate('general_Confirm')),
               onPressed: () async {
                 if (oncelik != null) {
-                  await _deleteOncelikUseCase(oncelik!.id!);
+                  // ✅ ref.read Generic Delete
+                  await ref.read(deleteOncelikProvider).call(oncelik!.id!);
                   if (mounted) {
-                    Navigator.of(context).pop(); // dialog kapat
-                    Navigator.of(context).pop(true); // önceki sayfaya dön
+                    Navigator.of(context).pop(); // dialog
+                    Navigator.of(context).pop(true); // sayfa
                   }
                 }
               },
@@ -85,23 +83,16 @@ class _OncelikDetailState extends State<OncelikDetail> {
   @override
   Widget build(BuildContext context) {
     final local = AppLocalizations.of(context);
-
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (oncelik == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(local.translate('general_priority')),
-        ),
+        appBar: AppBar(title: Text(local.translate('general_priority'))),
         body: Center(
-          child: Text(
-            local.translate('general_notFound'),
-            style: const TextStyle(fontSize: 20, color: Colors.red),
-          ),
+          child: Text(local.translate('general_notFound'),
+              style: const TextStyle(fontSize: 20, color: Colors.red)),
         ),
       );
     }
@@ -148,7 +139,8 @@ class _OncelikDetailState extends State<OncelikDetail> {
         padding: const EdgeInsets.all(8.0),
         child: Container(
           decoration: BoxDecoration(
-            color: oncelikRengi.withOpacity(0.2),
+            color: oncelikRengi.withValues(
+                alpha: 0.2), // withOpacity yerine withValues
             borderRadius: BorderRadius.circular(12),
           ),
           padding: const EdgeInsets.all(12),
@@ -186,16 +178,14 @@ class _OncelikDetailState extends State<OncelikDetail> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-              fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
-        ),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black)),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 16, color: Colors.black87),
-        ),
+        Text(value,
+            style: const TextStyle(fontSize: 16, color: Colors.black87)),
       ],
     );
   }

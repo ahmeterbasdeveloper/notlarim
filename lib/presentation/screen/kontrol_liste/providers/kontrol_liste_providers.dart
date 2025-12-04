@@ -1,13 +1,44 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:notlarim/core/di/oncelik_di_providers.dart';
+
+// Entities
 import '../../../../domain/entities/kontrol_liste.dart';
 
-// UseCases
-import '../../../../domain/usecases/kontrol_liste/get_all_kontrol_liste.dart';
+// ✅ Generic UseCase
+import '../../../../core/usecases/crud_usecases.dart';
+// ✅ DI Providers
+import '../../../../core/di/kontrol_liste_di_providers.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ Helper & Utils (Öncelik Rengi İçin)
+import '../../../../core/utils/color_helper.dart';
 
-// 1. STATE
+// =============================================================================
+// 🎨 ÖNCELİK RENGİ PROVIDER'I (Aynen Kalabilir, ama sl yerine ref kullanalım)
+// =============================================================================
+final oncelikColorProvider =
+    FutureProvider.family<Color, int>((ref, oncelikId) async {
+  try {
+    // ✅ UseCase'i Riverpod'dan çekiyoruz
+    final getOncelikById = ref.read(getOncelikByIdProvider);
+
+    // Veriyi istiyoruz
+    final oncelik = await getOncelikById.call(oncelikId);
+
+    if (oncelik != null && oncelik.renkKodu.isNotEmpty) {
+      return ColorHelper.hexToColor(oncelik.renkKodu);
+    }
+    return Colors.grey.shade300;
+  } catch (e) {
+    return Colors.grey.shade300;
+  }
+});
+
+// =============================================================================
+// 📋 LİSTE STATE YÖNETİMİ
+// =============================================================================
+
+// STATE
 class KontrolListeState {
   final List<KontrolListe> kontrolListeleri;
   final bool isLoading;
@@ -32,9 +63,9 @@ class KontrolListeState {
   }
 }
 
-// 2. NOTIFIER
+// NOTIFIER
 class KontrolListeNotifier extends StateNotifier<KontrolListeState> {
-  final GetAllKontrolListe _getAllKontrolListe;
+  final GetAllUseCase<KontrolListe> _getAllKontrolListe;
 
   KontrolListeNotifier(this._getAllKontrolListe) : super(KontrolListeState()) {
     loadKontrolListeleri();
@@ -43,7 +74,9 @@ class KontrolListeNotifier extends StateNotifier<KontrolListeState> {
   Future<void> loadKontrolListeleri() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final result = await _getAllKontrolListe();
+      final result = await _getAllKontrolListe.call();
+      // Sıralama (Opsiyonel)
+      // result.sort((a, b) => b.kayitZamani.compareTo(a.kayitZamani));
       state = state.copyWith(isLoading: false, kontrolListeleri: result);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
@@ -51,8 +84,10 @@ class KontrolListeNotifier extends StateNotifier<KontrolListeState> {
   }
 }
 
-// 3. PROVIDER
+// PROVIDER
 final kontrolListeNotifierProvider =
     StateNotifierProvider<KontrolListeNotifier, KontrolListeState>((ref) {
-  return KontrolListeNotifier(sl<GetAllKontrolListe>());
+  // Generic Provider
+  final getAll = ref.watch(getAllKontrolListeProvider);
+  return KontrolListeNotifier(getAll);
 });

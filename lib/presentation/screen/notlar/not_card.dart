@@ -1,103 +1,78 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod eklendi
+import 'package:notlarim/core/di/kategori_di_providers.dart';
+import 'package:notlarim/core/di/oncelik_di_providers.dart';
+
 import '../../../../core/config/app_config.dart';
 import '../../../../core/utils/color_helper.dart';
 
 // 🧠 Domain
 import '../../../domain/entities/not.dart';
-import '../../../domain/usecases/kategori/get_kategori_by_id.dart';
-import '../../../domain/usecases/oncelik/get_oncelik_by_id.dart';
 
-// DI Container
-import '../../../../core/di/injection_container.dart'; // sl için gerekli
+// 🔌 DI Providers (Generic UseCase'lere erişim için)
+import '../../../../core/di/not_di_providers.dart';
 
-class NotCard extends StatefulWidget {
+/// ⚡️ 1. Kartın verilerini (Kategori, Öncelik, Renk) asenkron getiren Provider
+/// Bu provider, her 'Not' nesnesi için özel çalışır (family kullanımı).
+final notCardDataProvider =
+    FutureProvider.family<Map<String, dynamic>, Not>((ref, not) async {
+  // AppProviders dosyasındaki Generic UseCase provider'larını okuyoruz
+  final getKategori = ref.read(getKategoriByIdProvider);
+  final getOncelik = ref.read(getOncelikByIdProvider);
+
+  // Verileri çekiyoruz
+  final kategori = await getKategori.call(not.kategoriId);
+  final oncelik = await getOncelik.call(not.oncelikId);
+
+  // Rengi hesaplıyoruz
+  final color = ColorHelper.hexToColor(oncelik?.renkKodu ?? '#CCCCCC');
+
+  return {
+    'kategori': kategori?.baslik ?? '-',
+    'oncelik': oncelik?.baslik ?? '-',
+    'color': color,
+  };
+});
+
+/// 📄 2. NotCard Widget'ı (Artık Stateless / ConsumerWidget)
+class NotCard extends ConsumerWidget {
   final Not not;
 
-  // Constructor'dan UseCase'leri kaldırdık
   const NotCard({
     super.key,
     required this.not,
   });
 
   @override
-  State<NotCard> createState() => _NotCardState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formattedDate = AppConfig.dateFormat.format(not.kayitZamani);
 
-class _NotCardState extends State<NotCard> {
-  late Future<Map<String, dynamic>> _cardData;
+    // ✅ Provider'ı izliyoruz. 'not' parametresini gönderiyoruz.
+    final cardDataAsync = ref.watch(notCardDataProvider(not));
 
-  // UseCase'leri burada tanımlıyoruz
-  final GetKategoriById _getKategoriById = sl<GetKategoriById>();
-  final GetOncelikById _getOncelikById = sl<GetOncelikById>();
+    return cardDataAsync.when(
+      // ⏳ Yükleniyor
+      loading: () => Card(
+        color: Colors.grey.shade100,
+        child: const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
 
-  @override
-  void initState() {
-    super.initState();
-    _cardData = _loadCardData();
-  }
+      // ❌ Hata
+      error: (error, stack) => _buildErrorCard(error.toString()),
 
-  @override
-  void didUpdateWidget(covariant NotCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.not.id != widget.not.id) {
-      _cardData = _loadCardData();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final formattedDate = AppConfig.dateFormat.format(widget.not.kayitZamani);
-
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _cardData,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return _buildErrorCard(snapshot.error.toString());
-        }
-
-        final data = snapshot.data ?? {};
-        final kategoriAdi = data['kategori'] ?? '-';
-        final oncelikAdi = data['oncelik'] ?? '-';
-        final color = data['color'] ?? Colors.grey.shade300;
-
+      // ✅ Veri Hazır
+      data: (data) {
         return _buildNotCard(
-          kategoriAdi: kategoriAdi,
-          oncelikAdi: oncelikAdi,
-          color: color,
+          kategoriAdi: data['kategori'],
+          oncelikAdi: data['oncelik'],
+          color: data['color'],
           formattedDate: formattedDate,
         );
       },
     );
-  }
-
-  Future<Map<String, dynamic>> _loadCardData() async {
-    try {
-      // UseCase'leri local değişkenlerden kullanıyoruz
-      final kategori = await _getKategoriById(widget.not.kategoriId);
-      final oncelik = await _getOncelikById(widget.not.oncelikId);
-
-      final color = ColorHelper.hexToColor(oncelik?.renkKodu ?? '#CCCCCC');
-
-      return {
-        'kategori': kategori.baslik ?? '-',
-        'oncelik': oncelik?.baslik ?? '-',
-        'color': color,
-      };
-    } catch (e) {
-      debugPrint('⚠️ NotCard veri yükleme hatası: $e');
-      return {
-        'kategori': '-',
-        'oncelik': '-',
-        'color': Colors.grey.shade200,
-      };
-    }
   }
 
   Widget _buildNotCard({
@@ -106,8 +81,6 @@ class _NotCardState extends State<NotCard> {
     required Color color,
     required String formattedDate,
   }) {
-    final not = widget.not;
-
     return Card(
       color: color,
       elevation: 3,

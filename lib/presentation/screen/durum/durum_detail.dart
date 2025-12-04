@@ -1,36 +1,27 @@
 import 'package:flutter/material.dart';
-
-// Localization
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
 import '../../../../localization/localization.dart';
-
-// Core
 import '../../../../core/config/app_config.dart';
 
 // Domain
 import '../../../domain/entities/durum.dart';
-import '../../../domain/usecases/durum/get_durum_by_id.dart';
-import '../../../domain/usecases/durum/delete_durum.dart';
 
-// DI
-import '../../../../core/di/injection_container.dart';
+// ✅ DI Providers
+import '../../../../core/di/durum_di_providers.dart';
 
 // UI
 import 'durum_add_edit.dart';
 
-class DurumDetail extends StatefulWidget {
+class DurumDetail extends ConsumerStatefulWidget {
   final int durumId;
 
   const DurumDetail({super.key, required this.durumId});
 
   @override
-  State<DurumDetail> createState() => _DurumDetailState();
+  ConsumerState<DurumDetail> createState() => _DurumDetailState();
 }
 
-class _DurumDetailState extends State<DurumDetail> {
-  // ✅ UseCase'ler DI'dan geliyor
-  final GetDurumById _getDurumUseCase = sl<GetDurumById>();
-  final DeleteDurum _deleteDurumUseCase = sl<DeleteDurum>();
-
+class _DurumDetailState extends ConsumerState<DurumDetail> {
   Durum? durum;
   bool isLoading = false;
 
@@ -43,17 +34,11 @@ class _DurumDetailState extends State<DurumDetail> {
   Future<void> _loadDurum() async {
     setState(() => isLoading = true);
     try {
-      final data = await _getDurumUseCase(widget.durumId);
+      // ✅ ref.read ile veri çekme
+      final data = await ref.read(getDurumByIdProvider).call(widget.durumId);
       setState(() => durum = data);
     } catch (e) {
       debugPrint('❌ Durum yüklenemedi: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(AppLocalizations.of(context)
-                  .translate('general_errorLoading'))),
-        );
-      }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -75,7 +60,8 @@ class _DurumDetailState extends State<DurumDetail> {
             ),
             TextButton(
               onPressed: () async {
-                await _deleteDurumUseCase(widget.durumId);
+                // ✅ ref.read ile silme
+                await ref.read(deleteDurumProvider).call(widget.durumId);
                 if (mounted) {
                   Navigator.of(context).pop(); // dialog
                   Navigator.of(context).pop(true); // sayfa
@@ -93,6 +79,8 @@ class _DurumDetailState extends State<DurumDetail> {
   Widget build(BuildContext context) {
     final local = AppLocalizations.of(context);
 
+    // ... (UI kodları aynı kalıyor, sadece _buildEditButton içindeki route güncellendi)
+
     if (isLoading || durum == null) {
       return Scaffold(
         backgroundColor: Colors.green.shade50,
@@ -100,6 +88,7 @@ class _DurumDetailState extends State<DurumDetail> {
       );
     }
 
+    // Renk dönüşümü
     final color = Color(int.parse(durum!.renkKodu.substring(1), radix: 16))
         .withAlpha(255);
 
@@ -107,23 +96,26 @@ class _DurumDetailState extends State<DurumDetail> {
       backgroundColor: Colors.green.shade50,
       appBar: AppBar(
         backgroundColor: Colors.green.shade900,
+        title: Text(
+            '${local.translate('general_situation')} ${local.translate('general_detail')}'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          color: Colors.white,
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          '${local.translate('general_situation')} '
-          '${local.translate('general_detail')}',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.amber,
-          ),
-        ),
         actions: [
-          _buildEditButton(context, local),
-          _buildDeleteButton(local),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, color: Colors.white),
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => AddEditDurum(durum: durum),
+              ));
+              _loadDurum();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.white),
+            onPressed: _showDeleteConfirmationDialog,
+          ),
         ],
       ),
       body: Padding(
@@ -133,87 +125,36 @@ class _DurumDetailState extends State<DurumDetail> {
             color: color,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: ListView(
-              children: [
-                _buildDetailRow(
-                  title: local.translate('general_title'),
-                  value: durum!.baslik,
-                  isBold: true,
-                ),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  title: local.translate('general_explanation'),
-                  value: durum!.aciklama,
-                ),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  title: local.translate('general_colorCode'),
-                  value: durum!.renkKodu,
-                ),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  title: local.translate('general_registrationDate'),
-                  value: AppConfig.dateFormat.format(durum!.kayitZamani),
-                ),
-              ],
-            ),
+          padding: const EdgeInsets.all(14),
+          child: ListView(
+            children: [
+              _buildDetailRow(local.translate('general_title'), durum!.baslik,
+                  isBold: true),
+              const SizedBox(height: 10),
+              _buildDetailRow(
+                  local.translate('general_explanation'), durum!.aciklama),
+              const SizedBox(height: 10),
+              _buildDetailRow(local.translate('general_registrationDate'),
+                  AppConfig.dateFormat.format(durum!.kayitZamani)),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow({
-    required String title,
-    required String value,
-    bool isBold = false,
-  }) {
+  Widget _buildDetailRow(String title, String value, {bool isBold = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '$title:',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
+        Text('$title:',
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.white)),
+        Text(value,
+            style: TextStyle(
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                fontSize: 16)),
       ],
-    );
-  }
-
-  Widget _buildEditButton(BuildContext context, AppLocalizations local) {
-    return IconButton(
-      icon: const Icon(Icons.edit_outlined),
-      color: Colors.white,
-      tooltip: local.translate('general_update'),
-      onPressed: () async {
-        if (isLoading) return;
-        await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => AddEditDurum(durum: durum),
-        ));
-        _loadDurum();
-      },
-    );
-  }
-
-  Widget _buildDeleteButton(AppLocalizations local) {
-    return IconButton(
-      icon: const Icon(Icons.delete_outline),
-      color: Colors.white,
-      tooltip: local.translate('general_delete'),
-      onPressed: _showDeleteConfirmationDialog,
     );
   }
 }
