@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:notlarim/core/localization/localization.dart';
 
 // Provider
-import '../../providers/hatirlatici_providers.dart';
+import '../providers/hatirlatici_providers.dart';
 
 // UI
 import '../widgets/hatirlatici_card.dart';
@@ -19,53 +21,158 @@ class HatirlaticiListesi extends ConsumerStatefulWidget {
 }
 
 class _HatirlaticiListesiState extends ConsumerState<HatirlaticiListesi> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    // ✅ DÜZELTME 1: initState içinde Provider çağırmak için güvenli yöntem
+    Timer? _debounce;
+    // İlk verileri yükle
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(hatirlaticiNotifierProvider.notifier).loadHatirlaticilar();
     });
+
+    // ✅ Arama Dinleyicisi
+    _searchController.addListener(() {
+      if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        final query = _searchController.text;
+        if (query.isEmpty) {
+          ref.read(hatirlaticiNotifierProvider.notifier).loadHatirlaticilar();
+        } else {
+          ref.read(hatirlaticiNotifierProvider.notifier).searchFromDb(query);
+        }
+      });
+    });
+
+    // ✅ Scroll Listener
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_searchController.text.isNotEmpty) {
+      FocusScope.of(context).unfocus();
+      return;
+    }
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref
+          .read(hatirlaticiNotifierProvider.notifier)
+          .loadHatirlaticilar(isLoadMore: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
-
-    // State Dinleme
     final state = ref.watch(hatirlaticiNotifierProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Tutarlı arka plan rengi
-      appBar: AppBar(
-        backgroundColor: Colors.green.shade900,
-        title: Text(
-          '${loc.translate('general_reminder')} ${loc.translate('general_list')}',
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.amber,
-          ),
+      backgroundColor: const Color(0xFFF5F7FA),
+      resizeToAvoidBottomInset: false,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _searchController.clear();
+          await ref
+              .read(hatirlaticiNotifierProvider.notifier)
+              .loadHatirlaticilar();
+        },
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // 1. HEADER
+            SliverAppBar(
+              backgroundColor: Colors.green.shade900,
+              title: Text(
+                '${loc.translate('general_reminder')} ${loc.translate('general_list')}',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber,
+                ),
+              ),
+              centerTitle: true,
+              floating: true,
+              pinned: true,
+              snap: true,
+              elevation: 0,
+            ),
+
+            // 2. ARAMA ÇUBUĞU (YENİ)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: _buildModernSearchBar(loc),
+              ),
+            ),
+
+            // 3. LİSTE DURUMLARI
+            if (state.isLoading && state.hatirlaticilar.isEmpty)
+              const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (state.hatirlaticilar.isEmpty && !state.isLoading)
+              SliverFillRemaining(
+                child: _buildEmptyState(loc, _searchController.text.isNotEmpty),
+              )
+            else
+              // 4. GRID YAPISI
+              SliverPadding(
+                padding: const EdgeInsets.all(12),
+                sliver: SliverMasonryGrid.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childCount: state.hatirlaticilar.length,
+                  itemBuilder: (context, index) {
+                    final hatirlatici = state.hatirlaticilar[index];
+                    return HatirlaticiCard(
+                      hatirlatici: hatirlatici,
+                      onTap: () async {
+                        _searchFocusNode.unfocus();
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => HatirlaticiDetail(
+                              hatirlaticiId: hatirlatici.id!,
+                            ),
+                          ),
+                        );
+                        ref
+                            .read(hatirlaticiNotifierProvider.notifier)
+                            .loadHatirlaticilar();
+                      },
+                    );
+                  },
+                ),
+              ),
+
+            // 5. YÜKLENİYOR İKONU
+            if (state.isLoading && state.hatirlaticilar.isNotEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 80)),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            tooltip: loc.translate('general_refresh'),
-            onPressed: () {
-              ref
-                  .read(hatirlaticiNotifierProvider.notifier)
-                  .loadHatirlaticilar();
-            },
-          )
-        ],
       ),
-
-      // Gövde Oluşturucu
-      body: _buildBody(context, loc, state),
-
-      // FAB
       floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'hatirlatici_listesi_fab', // ✅ Benzersiz Tag
+        heroTag: 'hatirlatici_listesi_fab',
         backgroundColor: const Color.fromARGB(255, 78, 18, 92),
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text(
@@ -74,105 +181,85 @@ class _HatirlaticiListesiState extends ConsumerState<HatirlaticiListesi> {
               const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         onPressed: () async {
+          _searchFocusNode.unfocus();
           await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => const HatirlaticiAddEdit(),
             ),
           );
-          // Ekleme işleminden dönünce listeyi yenile
           ref.read(hatirlaticiNotifierProvider.notifier).loadHatirlaticilar();
         },
       ),
     );
   }
 
-  Widget _buildBody(
-      BuildContext context, AppLocalizations loc, HatirlaticiState state) {
-    // 1. Yükleniyor Durumu
-    if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    // 2. Hata Durumu
-    if (state.errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 10),
-              Text(
-                '${loc.translate('general_dataLoadingError')}\n${state.errorMessage}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red, fontSize: 16),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () => ref
-                    .read(hatirlaticiNotifierProvider.notifier)
-                    .loadHatirlaticilar(),
-                child: Text(loc.translate('general_refresh') ?? "Yenile"),
-              )
-            ],
+  Widget _buildModernSearchBar(AppLocalizations loc) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        decoration: InputDecoration(
+          hintText: '${loc.translate('general_search')}...',
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.grey),
+                  onPressed: () {
+                    _searchController.clear();
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    // 3. Boş Liste Durumu
-    if (state.hatirlaticilar.isEmpty) {
-      return Center(
+  Widget _buildEmptyState(AppLocalizations loc, bool isSearching) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.alarm_off, size: 64, color: Colors.grey.shade400),
+            Icon(isSearching ? Icons.search_off : Icons.alarm_off,
+                size: 80, color: Colors.grey.shade300),
             const SizedBox(height: 16),
             Text(
-              '${loc.translate('general_no')} ${loc.translate('general_reminder')} ${loc.translate('general_found')}',
-              style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+              isSearching
+                  ? "Sonuç Bulunamadı"
+                  : loc.translate('general_notFound'),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isSearching
+                  ? "Farklı bir kelime ile aramayı deneyin."
+                  : "${loc.translate('general_no')} ${loc.translate('general_reminder')} ${loc.translate('general_found')}",
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
               textAlign: TextAlign.center,
             ),
           ],
         ),
-      );
-    }
-
-    // 4. Dolu Liste Durumu (Scroll Sorunu Giderilmiş)
-    return RefreshIndicator(
-      onRefresh: () async {
-        await ref
-            .read(hatirlaticiNotifierProvider.notifier)
-            .loadHatirlaticilar();
-      },
-      // ✅ DÜZELTME 2: SingleChildScrollView kaldırıldı.
-      // MasonryGridView zaten kendi scroll yapısına sahiptir.
-      child: MasonryGridView.count(
-        padding: const EdgeInsets.all(12),
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        itemCount: state.hatirlaticilar.length,
-        itemBuilder: (context, index) {
-          final hatirlatici = state.hatirlaticilar[index];
-          return HatirlaticiCard(
-            hatirlatici: hatirlatici,
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => HatirlaticiDetail(
-                    hatirlaticiId: hatirlatici.id!,
-                  ),
-                ),
-              );
-              // Detaydan dönünce yenile
-              ref
-                  .read(hatirlaticiNotifierProvider.notifier)
-                  .loadHatirlaticilar();
-            },
-          );
-        },
       ),
     );
   }

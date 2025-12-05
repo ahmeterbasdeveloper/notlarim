@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:notlarim/features/kategori/providers/kategori_di_providers.dart';
-import 'package:notlarim/features/oncelik/providers/oncelik_di_providers.dart';
+import 'package:notlarim/features/kategoriler/presentation/providers/kategori_di_providers.dart';
+import 'package:notlarim/features/oncelik/presentation/providers/oncelik_di_providers.dart';
 import 'package:notlarim/core/widgets/custom_text_field.dart';
 import 'package:notlarim/core/localization/localization.dart';
 
 // Entities
 import '../../domain/entities/not.dart';
-import '../../../kategori/domain/entities/kategori.dart';
+import '../../../kategoriler/domain/entities/kategori.dart';
 import '../../../oncelik/domain/entities/oncelik.dart';
 
 // DI Providers (Generic UseCase'lere erişim için)
@@ -15,8 +15,6 @@ import '../providers/not_di_providers.dart';
 
 // Helper
 import '../../../../../core/utils/color_helper.dart';
-
-// ✅ YENİ: Ortak Widget Importu
 
 class NotAddEdit extends ConsumerStatefulWidget {
   final Not? not;
@@ -248,6 +246,7 @@ class _NotAddEditState extends ConsumerState<NotAddEdit> {
                       const SizedBox(height: 16),
 
                       // --- AÇIKLAMA ALANI (CustomTextField) ---
+                      // ✅ Eski haline getirildi: Standart text alanı
                       CustomTextField(
                         label: local.translate('general_explanation') ??
                             'Açıklama',

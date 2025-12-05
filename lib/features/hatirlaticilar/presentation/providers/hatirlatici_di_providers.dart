@@ -7,6 +7,9 @@ import '../../domain/repositories/hatirlatici_repository.dart';
 import '../../data/repositories/hatirlatici_repository_impl.dart';
 import '../../domain/usecases/get_hatirlatici_by_durum.dart';
 
+// ✅ Yeni UseCase import edildi
+import '../../domain/usecases/search_hatirlatici.dart';
+
 // REPOSITORY
 final hatirlaticiRepositoryProvider = Provider<HatirlaticiRepository>((ref) {
   return HatirlaticiRepositoryImpl(ref.watch(dbServiceProvider));
@@ -30,3 +33,7 @@ final getHatirlaticiByIdProvider = Provider((ref) =>
 
 final getHatirlaticiByDurumProvider = Provider(
     (ref) => GetHatirlaticiByDurum(ref.watch(hatirlaticiRepositoryProvider)));
+
+// ✅ Arama Provider'ı eklendi
+final searchHatirlaticiProvider = Provider(
+    (ref) => SearchHatirlatici(ref.watch(hatirlaticiRepositoryProvider)));

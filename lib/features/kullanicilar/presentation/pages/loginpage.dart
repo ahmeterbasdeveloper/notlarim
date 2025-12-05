@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:notlarim/core/localization/localization.dart';
-
-// Provider (Login işlemleri için)
-import '../providers/login_providers.dart';
+import 'package:package_info_plus/package_info_plus.dart'; // ✅ Eklendi
+import '../../../../core/localization/localization.dart';
 
 // Ana Menü
 import '../../../genel/anamenu/ana_menu.dart';
 
-// ✅ DI Providers (verifyUser ve updatePassword provider'larına erişim için)
+// ✅ DI Providers
 import '../providers/kullanici_di_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -25,6 +23,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+  String _versionInfo = ""; // ✅ Versiyon bilgisini tutacak değişken
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion(); // ✅ Versiyonu yükle
+  }
+
+  // ✅ Versiyon bilgisini çeken fonksiyon
+  Future<void> _loadAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        // Örn: v1.0.0 (12)
+        _versionInfo = "v${info.version} (${info.buildNumber})";
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -33,34 +50,71 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _submitLogin() {
-    if (_formKey.currentState!.validate()) {
-      final username = _usernameController.text.trim();
-      final password = _passwordController.text.trim();
+  // ... (Giriş İşlemi Kodu Aynen Kalıyor - _submitLogin) ...
+  Future<void> _submitLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+    FocusScope.of(context).unfocus();
+    setState(() => _isLoading = true);
 
-      // Provider'daki fonksiyonu çağırıyoruz
-      ref.read(loginProvider.notifier).login(username, password);
+    try {
+      final bool isSuccess =
+          await ref.read(loginUserProvider).call(username, password);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Giriş başarılı, yönlendiriliyorsunuz...'),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const AnaMenuMenuScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(children: const [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 10),
+              Expanded(child: Text("Kullanıcı adı veya şifre hatalı!")),
+            ]),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text("Bir hata oluştu: $e"), backgroundColor: Colors.red),
+      );
     }
   }
 
   // ---------------------------------------------------------------------------
-  // 🔒 ŞİFREMİ UNUTTUM İŞLEMLERİ
+  // 🔒 ŞİFREMİ UNUTTUM İŞLEMLERİ (GÜNCELLENDİ)
   // ---------------------------------------------------------------------------
   void _showForgotPasswordDialog() {
     final usernameController = TextEditingController();
-    final emailController = TextEditingController();
+    // E-posta yerine Güvenlik Kodu Controller
+    final securityCodeController = TextEditingController();
     final newPassController = TextEditingController();
 
-    // Dialog içinde form kontrolü
     final formKeyDialog = GlobalKey<FormState>();
-
-    // Doğrulama durumu (false: bilgileri sor, true: yeni şifre sor)
     bool isVerified = false;
 
     showDialog(
       context: context,
       builder: (ctx) {
-        // Dialog'un kendi state'ini yönetebilmesi için StatefulBuilder kullanıyoruz
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
@@ -78,12 +132,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (!isVerified) ...[
-                        // --- 1. AŞAMA: KİMLİK DOĞRULAMA ---
+                        // --- 1. AŞAMA: KULLANICI ADI VE GÜVENLİK KODU ---
                         const Text(
-                          "Lütfen hesabınızı doğrulamak için kullanıcı adınızı ve e-posta adresinizi giriniz.",
+                          "Lütfen hesabınızı doğrulamak için Kullanıcı Adınızı ve Güvenlik Kodunuzu giriniz.",
                           style: TextStyle(fontSize: 14, color: Colors.black87),
                         ),
                         const SizedBox(height: 20),
+
+                        // Kullanıcı Adı Input
                         TextFormField(
                           controller: usernameController,
                           decoration: const InputDecoration(
@@ -93,31 +149,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             contentPadding: EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 12),
                           ),
-                          // ✅ DÜZELTME: Null check güvenli hale getirildi
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return 'Boş bırakılamaz';
-                            }
-                            return null;
-                          },
+                          validator: (v) => (v == null || v.isEmpty)
+                              ? 'Boş bırakılamaz'
+                              : null,
                         ),
                         const SizedBox(height: 15),
+
+                        // Güvenlik Kodu Input (Değiştirilen Kısım)
                         TextFormField(
-                          controller: emailController,
+                          controller: securityCodeController,
+                          keyboardType:
+                              TextInputType.number, // Sadece sayısal klavye
+                          obscureText:
+                              true, // Güvenlik kodu olduğu için gizliyoruz
                           decoration: const InputDecoration(
-                            labelText: 'E-posta',
-                            prefixIcon: Icon(Icons.email),
+                            labelText: 'Güvenlik Kodu',
+                            prefixIcon: Icon(Icons.security), // İkon değişti
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 12),
                           ),
-                          // ✅ DÜZELTME: Null check güvenli hale getirildi
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return 'Boş bırakılamaz';
-                            }
-                            return null;
-                          },
+                          validator: (v) => (v == null || v.isEmpty)
+                              ? 'Boş bırakılamaz'
+                              : null,
                         ),
                       ] else ...[
                         // --- 2. AŞAMA: YENİ ŞİFRE ---
@@ -135,13 +189,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             border: OutlineInputBorder(),
                           ),
                           obscureText: true,
-                          // ✅ DÜZELTME: Null check güvenli hale getirildi
-                          validator: (v) {
-                            if (v == null || v.length < 4) {
-                              return 'En az 4 karakter olmalı';
-                            }
-                            return null;
-                          },
+                          validator: (v) => (v == null || v.length < 4)
+                              ? 'En az 4 karakter olmalı'
+                              : null,
                         ),
                       ],
                     ],
@@ -166,23 +216,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       if (!isVerified) {
                         // === DOĞRULAMA İŞLEMİ ===
                         try {
-                          // Riverpod ile VerifyUser UseCase çağrısı
+                          // verifyUser provider çağırılıyor (Artık güvenlik kodu ile)
                           final exists =
                               await ref.read(verifyUserProvider).call(
                                     usernameController.text.trim(),
-                                    emailController.text.trim(),
+                                    securityCodeController.text.trim(),
                                   );
 
                           if (exists) {
-                            setStateDialog(() {
-                              isVerified = true; // 2. Aşamaya geç
-                            });
+                            setStateDialog(() => isVerified = true);
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                      "Kullanıcı adı veya e-posta hatalı!"),
+                                      "Kullanıcı adı veya Güvenlik Kodu hatalı!"),
                                   backgroundColor: Colors.red,
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -195,14 +243,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       } else {
                         // === ŞİFRE GÜNCELLEME İŞLEMİ ===
                         try {
-                          // Riverpod ile UpdatePassword UseCase çağrısı
                           await ref.read(updatePasswordProvider).call(
                                 usernameController.text.trim(),
                                 newPassController.text.trim(),
                               );
 
                           if (mounted) {
-                            Navigator.pop(ctx); // Dialogu kapat
+                            Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -228,42 +275,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // 🎨 UI TASARIMI
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final loginState = ref.watch(loginProvider);
     final loc = AppLocalizations.of(context);
-
-    // Login durumunu dinle (Hata veya Başarı)
-    ref.listen(loginProvider, (previous, next) {
-      if (next.errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 10),
-                Expanded(child: Text(next.errorMessage!)),
-              ],
-            ),
-            backgroundColor: Colors.red.shade400,
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      } else if (next.isSuccess == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Giriş başarılı, yönlendiriliyorsunuz...'),
-            backgroundColor: Colors.green.shade600,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const AnaMenuMenuScreen()),
-        );
-      }
-    });
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -341,7 +358,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Kullanıcı Adı Input Alanı
+                    // Kullanıcı Adı
                     TextFormField(
                       controller: _usernameController,
                       keyboardType: TextInputType.text,
@@ -349,16 +366,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         label: 'Kullanıcı Adı',
                         icon: Icons.person_outline,
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Lütfen kullanıcı adınızı girin';
-                        }
-                        return null;
-                      },
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? 'Lütfen kullanıcı adınızı girin'
+                          : null,
                     ),
                     const SizedBox(height: 20),
 
-                    // Şifre Input
+                    // Şifre
                     TextFormField(
                       controller: _passwordController,
                       obscureText: !_isPasswordVisible,
@@ -380,14 +394,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           },
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Lütfen şifrenizi girin';
-                        }
-                        return null;
-                      },
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? 'Lütfen şifrenizi girin'
+                          : null,
                     ),
 
+                    // Şifremi Unuttum Butonu
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -402,7 +414,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 30),
 
                     // Giriş Butonu
-                    loginState.isLoading
+                    _isLoading
                         ? const CircularProgressIndicator()
                         : SizedBox(
                             width: double.infinity,
@@ -428,7 +440,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 40),
+
+                    // ✅ VERSİYON BİLGİSİ (EN ALTA EKLENDİ)
+                    Text(
+                      _versionInfo,
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 20), // En altta biraz boşluk
                   ],
                 ),
               ),

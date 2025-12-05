@@ -9,8 +9,9 @@ class GetAllUseCase<T extends BaseEntity> {
 
   GetAllUseCase(this.repository);
 
-  Future<List<T>> call() async {
-    return await repository.getAll();
+// ✅ limit ve offset parametrelerini buraya da ekliyoruz
+  Future<List<T>> call({int? limit, int? offset}) async {
+    return await repository.getAll(limit: limit, offset: offset);
   }
 }
 

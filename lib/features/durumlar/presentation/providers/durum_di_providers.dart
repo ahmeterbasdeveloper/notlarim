@@ -5,6 +5,7 @@ import '../../../../../../core/usecases/crud_usecases.dart';
 import '../../domain/entities/durum.dart';
 import '../../domain/repositories/durum_repository.dart';
 import '../../data/repositories/durum_repository_impl.dart';
+import '../../domain/usecases/search_durum.dart';
 
 // REPOSITORY
 final durumRepositoryProvider = Provider<DurumRepository>((ref) {
@@ -26,3 +27,6 @@ final deleteDurumProvider =
 
 final getDurumByIdProvider = Provider(
     (ref) => GetByIdUseCase<Durum>(ref.watch(durumRepositoryProvider)));
+
+final searchDurumProvider =
+    Provider((ref) => SearchDurum(ref.watch(durumRepositoryProvider)));

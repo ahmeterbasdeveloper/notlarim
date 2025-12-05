@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ 1. Riverpod Eklendi
-import 'package:notlarim/features/oncelik/providers/oncelik_di_providers.dart';
+import 'package:notlarim/features/oncelik/presentation/providers/oncelik_di_providers.dart';
 
 import '../../../../../core/config/app_config.dart';
 import '../../../../../core/utils/color_helper.dart';
@@ -146,6 +146,7 @@ class _NotDetailState extends ConsumerState<NotDetail> {
       padding: const EdgeInsets.all(16),
       children: [
         _buildSection(loc.translate('general_title'), current.baslik),
+        // ✅ Açıklama alanı eski haline (Düz Metin) getirildi
         _buildSection(loc.translate('general_explanation'), current.aciklama),
         _buildSection(
           loc.translate('general_registrationDate'),

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:notlarim/features/kategori/providers/kategori_di_providers.dart';
-import 'package:notlarim/features/oncelik/providers/oncelik_di_providers.dart';
+import 'package:notlarim/features/kategoriler/presentation/providers/kategori_di_providers.dart';
+import 'package:notlarim/features/oncelik/presentation/providers/oncelik_di_providers.dart';
 import '../../../../../../core/di/core_providers.dart';
 import '../../../../../../core/usecases/crud_usecases.dart';
 

@@ -9,7 +9,6 @@ import 'features/genel/anamenu/ana_menu.dart';
 import 'features/genel/splash/splash_screen.dart';
 
 void main() async {
-  // ✅ DÜZELTME 1: Doğru method 'WidgetsFlutterBinding' sınıfındadır.
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
   await SystemChrome.setPreferredOrientations([
@@ -28,7 +27,6 @@ class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  // ✅ DÜZELTME 2: Private tip (_MyAppState) yerine genel tip (State<MyApp>) döndürülmeli.
   State<MyApp> createState() => _MyAppState();
 
   static void setLocale(BuildContext context, Locale newLocale) async {

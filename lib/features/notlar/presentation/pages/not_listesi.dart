@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -22,49 +24,86 @@ class _NotListesiState extends ConsumerState<NotListesi> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
+  // ✅ 1. ScrollController Tanımlıyoruz
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    // Sayfa açıldığında verileri yükle
+    Timer? _debounce;
+    // İlk verileri yükle
     Future.microtask(() => ref.read(notNotifierProvider.notifier).loadNotlar());
 
-    // 🔍 Arama Dinleyicisi
+    // Arama Dinleyicisi
     _searchController.addListener(() {
-      ref
-          .read(notNotifierProvider.notifier)
-          .filterLocalNotes(_searchController.text);
+      if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        final query = _searchController.text;
+        if (query.isEmpty) {
+          ref.read(notNotifierProvider.notifier).loadNotlar();
+        } else {
+          ref.read(notNotifierProvider.notifier).searchFromDb(query);
+        }
+      });
     });
+
+    // ✅ 2. Scroll Listener Ekliyoruz
+    _scrollController.addListener(_onScroll);
+  }
+
+  // ✅ Scroll Mantığı
+  void _onScroll() {
+    // Klavyeyi kapat (opsiyonel UX iyileştirmesi)
+    if (_searchController.text.isNotEmpty) {
+      FocusScope.of(context).unfocus();
+    }
+
+    // Listenin sonuna yaklaşıldı mı? (Max scroll - 200 piksel kala)
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      // Provider'daki loadNotlar fonksiyonunu 'Load More' modunda çağır
+      final notifier = ref.read(notNotifierProvider.notifier);
+      // Şu an yükleme yapmıyorsa isteği gönder
+      // Not: Notifier içindeki isLoading kontrolü zaten var ama burada da yapmak güvenlidir.
+      notifier.loadNotlar(isLoadMore: true);
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose(); // ✅ Controller'ı dispose etmeyi unutma
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final local = AppLocalizations.of(context);
-    // ✅ STATE DİNLEME
+    // STATE DİNLEME
     final state = ref.watch(notNotifierProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Modern arka plan
+      backgroundColor: const Color(0xFFF5F7FA),
       resizeToAvoidBottomInset: false,
 
       body: RefreshIndicator(
         onRefresh: () async {
+          // Yukarı çekince listeyi sıfırla (Refresh)
           await ref.read(notNotifierProvider.notifier).loadNotlar();
         },
         child: CustomScrollView(
+          // ✅ 3. Controller'ı buraya bağlıyoruz
+          controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           slivers: [
             // 1. HEADER
             SliverAppBar(
               backgroundColor: Colors.green.shade900,
               title: Text(
-                local.translate('general_category'),
+                local.translate('menu_notes') ??
+                    'Notlar', // Çeviri anahtarını düzelttim
                 style: const TextStyle(
                   color: Colors.amber,
                   fontWeight: FontWeight.bold,
@@ -86,13 +125,14 @@ class _NotListesiState extends ConsumerState<NotListesi> {
               ),
             ),
 
-            // 3. YÜKLENİYOR / BOŞ / LİSTE DURUMLARI
-            if (state.isLoading)
+            // 3. DURUMLAR (Yükleniyor / Boş / Liste)
+
+            // Eğer ilk açılışta yükleniyorsa ve liste boşsa (Tam ekran loading)
+            if (state.isLoading && state.notlar.isEmpty)
               const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
               )
-            // Not: filteredKategoriler kullanıyoruz
-            else if (state.filteredNotlar.isEmpty)
+            else if (state.filteredNotlar.isEmpty && !state.isLoading)
               SliverFillRemaining(
                 child:
                     _buildEmptyState(local, _searchController.text.isNotEmpty),
@@ -111,7 +151,7 @@ class _NotListesiState extends ConsumerState<NotListesi> {
                     final not = state.filteredNotlar[index];
                     return GestureDetector(
                       onTap: () async {
-                        _searchFocusNode.unfocus(); // Klavyeyi kapat
+                        _searchFocusNode.unfocus();
                         await Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => NotDetail(
@@ -119,12 +159,24 @@ class _NotListesiState extends ConsumerState<NotListesi> {
                             ),
                           ),
                         );
-                        // Detaydan dönünce listeyi güncelle
+                        // Detaydan dönünce listeyi güncelle (Refresh)
+                        // İsteğe bağlı: Sadece ilgili notu güncellemek daha performanslıdır
+                        // ama şimdilik refresh kalsın.
                         ref.read(notNotifierProvider.notifier).loadNotlar();
                       },
                       child: NotCard(not: not),
                     );
                   },
+                ),
+              ),
+
+            // ✅ 5. ALT YÜKLEME İKONU (Infinite Scroll Indicator)
+            // Eğer liste doluysa ve şu an yeni veri yükleniyorsa altta spinner göster
+            if (state.isLoading && state.notlar.isNotEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
               ),
 
@@ -134,13 +186,13 @@ class _NotListesiState extends ConsumerState<NotListesi> {
         ),
       ),
 
-      // ✅ FAB BUTTON
+      // FAB BUTTON
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'not_listesi_fab',
         backgroundColor: const Color.fromARGB(255, 78, 18, 92),
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text(
-          'Kaydet',
+          local.translate('general_save') ?? 'Kaydet', // Çeviriye dikkat
           style:
               const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
@@ -149,13 +201,14 @@ class _NotListesiState extends ConsumerState<NotListesi> {
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const NotAddEdit()),
           );
+          // Yeni not ekleyince listeyi yenile
           ref.read(notNotifierProvider.notifier).loadNotlar();
         },
       ),
     );
   }
 
-  // ✨ Modern Arama Çubuğu
+  // ... (SearchBar ve EmptyState metodları aynen kalabilir)
   Widget _buildModernSearchBar(AppLocalizations loc) {
     return Container(
       decoration: BoxDecoration(
@@ -163,7 +216,7 @@ class _NotListesiState extends ConsumerState<NotListesi> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -172,7 +225,6 @@ class _NotListesiState extends ConsumerState<NotListesi> {
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocusNode,
-        // Listener hallediyor, onChanged'e gerek yok ama kalabilir
         decoration: InputDecoration(
           hintText: '${loc.translate('general_search')}...',
           hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -200,7 +252,7 @@ class _NotListesiState extends ConsumerState<NotListesi> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(isSearching ? Icons.search_off : Icons.category_outlined,
+            Icon(isSearching ? Icons.search_off : Icons.note_alt_outlined,
                 size: 80, color: Colors.grey.shade300),
             const SizedBox(height: 16),
             Text(

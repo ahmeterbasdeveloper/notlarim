@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:notlarim/core/localization/localization.dart';
 
 // Domain Entities
-import '../../../kategori/domain/entities/kategori.dart';
+import '../../../kategoriler/domain/entities/kategori.dart';
 import '../../../oncelik/domain/entities/oncelik.dart';
 
 class GorevlerForm extends StatefulWidget {

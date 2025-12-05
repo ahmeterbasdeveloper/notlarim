@@ -4,7 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 // Modeller (Tablo ve Kolon isimlerine erişim için)
 import '../../features/durumlar/data/models/durum_model.dart';
-import '../../features/kategori/data/models/kategori_model.dart';
+import '../../features/kategoriler/data/models/kategori_model.dart';
 import '../../features/oncelik/data/models/oncelik_model.dart';
 import '../../features/kullanicilar/data/models/kullanicilar.dart';
 import '../../features/notlar/data/models/not_model.dart';
@@ -62,7 +62,8 @@ class DbSchema {
         ${KullaniciAlanlar.password} $textType,
         ${KullaniciAlanlar.userName} $textType,
         ${KullaniciAlanlar.cepTelefon} $textType,
-        ${KullaniciAlanlar.fotoUrl} $textType
+        ${KullaniciAlanlar.fotoUrl} $textType,
+        ${KullaniciAlanlar.guvenlikKodu} $textType
       )
     ''');
 

@@ -11,11 +11,11 @@ import '../../../../core/base/base_repository_impl.dart'; // ✅ Base Impl
 class OncelikRepositoryImpl extends BaseRepositoryImpl<Oncelik>
     implements OncelikRepository {
   OncelikRepositoryImpl(AbstractDBService dbService)
-      : super(
-          dbService,
-          tableOncelik, // Model dosyasındaki tablo adı
-          (json) => OncelikModel.fromJson(json), // Dönüştürücü
-        );
+    : super(
+        dbService,
+        tableOncelik, // Model dosyasındaki tablo adı
+        (json) => OncelikModel.fromJson(json), // Dönüştürücü
+      );
 
   // ❌ Standard CRUD metodlarını SİLİN.
 
@@ -33,5 +33,17 @@ class OncelikRepositoryImpl extends BaseRepositoryImpl<Oncelik>
     } else {
       throw Exception('Hiç öncelik bulunamadı.');
     }
+  }
+
+  @override
+  Future<List<Oncelik>> searchOncelikler(String query) async {
+    final database = await db;
+    final result = await database.query(
+      tableName,
+      where:
+          '${OncelikAlanlar.baslik} LIKE ? OR ${OncelikAlanlar.aciklama} LIKE ?',
+      whereArgs: ['%$query%', '%$query%'],
+    );
+    return result.map((json) => fromMap(json)).toList();
   }
 }

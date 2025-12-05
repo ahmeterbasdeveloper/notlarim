@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../../core/di/core_providers.dart';
 import '../../../../../../core/usecases/crud_usecases.dart';
 
+// ✅ Yeni UseCase import
+import '../../domain/usecases/search_gorev.dart';
+
 import '../../domain/entities/gorev.dart';
 import '../../domain/repositories/gorev_repository.dart';
 import '../../data/repositories/gorev_repository_impl.dart';
@@ -26,3 +29,7 @@ final deleteGorevProvider =
 
 final getGorevByIdProvider = Provider(
     (ref) => GetByIdUseCase<Gorev>(ref.watch(gorevRepositoryProvider)));
+
+// ✅ Arama Provider'ı
+final searchGorevProvider =
+    Provider((ref) => SearchGorev(ref.watch(gorevRepositoryProvider)));

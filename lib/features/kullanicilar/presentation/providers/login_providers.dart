@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/legacy.dart';
 // UseCase
 import '../../domain/usecases/login_user.dart';
 
-// ✅ DI Providers (GetIt yerine buradan okuyacağız)
+// ✅ DI Providers
 import 'kullanici_di_providers.dart';
 
 // -----------------------------------------------------------------------------
@@ -46,7 +46,7 @@ class LoginNotifier extends StateNotifier<LoginState> {
   Future<void> login(String userName, String password) async {
     debugPrint('🚀 Login İşlemi Başlatıldı: userName: $userName');
 
-    // Yükleniyor durumunu başlat, eski hataları temizle
+    // Yükleniyor durumunu başlat, eski hataları ve başarı durumunu temizle
     state =
         state.copyWith(isLoading: true, errorMessage: null, isSuccess: null);
 
@@ -76,6 +76,5 @@ class LoginNotifier extends StateNotifier<LoginState> {
 // -----------------------------------------------------------------------------
 final loginProvider = StateNotifierProvider<LoginNotifier, LoginState>((ref) {
   final loginUser = ref.watch(loginUserProvider);
-
   return LoginNotifier(loginUser);
 });

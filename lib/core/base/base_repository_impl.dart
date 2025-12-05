@@ -15,9 +15,17 @@ class BaseRepositoryImpl<T extends BaseEntity> implements CrudRepository<T> {
   Future<Database> get db async => await _dbService.getDatabaseInstance();
 
   @override
-  Future<List<T>> getAll() async {
+  Future<List<T>> getAll({int? limit, int? offset}) async {
+    // ✅ Parametreleri ekledik
     final database = await db;
-    final result = await database.query(tableName);
+
+    // ✅ limit ve offset'i query metoduna paslıyoruz
+    final result = await database.query(
+      tableName,
+      limit: limit,
+      offset: offset,
+      orderBy: '_id DESC', // Genelde yeni kayıtlar üstte istenir
+    );
 
     return result.map((e) => fromMap(e)).toList();
   }

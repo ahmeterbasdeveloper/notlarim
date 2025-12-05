@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:notlarim/features/kategori/providers/kategori_di_providers.dart';
-import 'package:notlarim/features/oncelik/providers/oncelik_di_providers.dart';
+import 'package:notlarim/features/kategoriler/presentation/providers/kategori_di_providers.dart';
+import 'package:notlarim/features/oncelik/presentation/providers/oncelik_di_providers.dart';
 import 'package:notlarim/core/localization/localization.dart';
 
 import '../../domain/entities/kontrol_liste.dart';
-import '../../../kategori/domain/entities/kategori.dart';
+import '../../../kategoriler/domain/entities/kategori.dart';
 import '../../../oncelik/domain/entities/oncelik.dart';
 
 // DI Providers

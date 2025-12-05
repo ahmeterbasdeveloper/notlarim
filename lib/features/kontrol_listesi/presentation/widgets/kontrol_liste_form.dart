@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:notlarim/core/localization/localization.dart';
 
 // Domain
-import '../../../kategori/domain/entities/kategori.dart';
+import '../../../kategoriler/domain/entities/kategori.dart';
 import '../../../oncelik/domain/entities/oncelik.dart';
 
 class KontrolListeForm extends StatefulWidget {

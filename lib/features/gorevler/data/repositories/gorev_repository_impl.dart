@@ -13,9 +13,19 @@ class GorevRepositoryImpl extends BaseRepositoryImpl<Gorev>
   GorevRepositoryImpl(AbstractDBService dbService)
       : super(
           dbService,
-          tableGorevler, // Model dosyasındaki tablo adı
-          (json) => GorevModel.fromJson(json), // Dönüştürücü
+          tableGorevler,
+          (json) => GorevModel.fromJson(json),
         );
 
-  // ❌ createGorev, updateGorev vb. metodları SİLİN.
+  // ✅ Arama Implementasyonu
+  @override
+  Future<List<Gorev>> searchGorevler(String query) async {
+    final database = await db;
+    final result = await database.query(
+      tableName,
+      where: '${GorevAlanlar.baslik} LIKE ? OR ${GorevAlanlar.aciklama} LIKE ?',
+      whereArgs: ['%$query%', '%$query%'],
+    );
+    return result.map((json) => fromMap(json)).toList();
+  }
 }

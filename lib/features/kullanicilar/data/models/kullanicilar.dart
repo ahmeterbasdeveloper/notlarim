@@ -9,7 +9,8 @@ class KullaniciAlanlar {
     email,
     userName,
     password,
-    fotoUrl
+    fotoUrl,
+    guvenlikKodu
   ];
 
   static const String id = '_id';
@@ -20,6 +21,7 @@ class KullaniciAlanlar {
   static const String userName = 'userName';
   static const String password = 'password';
   static const String fotoUrl = 'fotoUrl';
+  static const String guvenlikKodu = 'GuvenlikKodu';
 }
 
 class Kullanicilar {
@@ -31,6 +33,7 @@ class Kullanicilar {
   final String userName;
   final String password;
   final String fotoUrl;
+  final String guvenlikKodu;
 
   const Kullanicilar({
     this.id,
@@ -41,6 +44,7 @@ class Kullanicilar {
     required this.userName,
     required this.password,
     required this.fotoUrl,
+    required this.guvenlikKodu,
   });
 
   Kullanicilar copy({
@@ -52,6 +56,7 @@ class Kullanicilar {
     String? userName,
     String? password, // Yeni şifre alanı
     String? fotoUrl,
+    String? guvenlikKodu,
   }) =>
       Kullanicilar(
         id: id ?? this.id,
@@ -62,6 +67,7 @@ class Kullanicilar {
         userName: userName ?? this.userName,
         password: password ?? this.password, // Yeni şifre alanı
         fotoUrl: fotoUrl ?? this.fotoUrl,
+        guvenlikKodu: guvenlikKodu ?? this.guvenlikKodu,
       );
 
   static Kullanicilar fromJson(Map<String, Object?> json) => Kullanicilar(
@@ -73,6 +79,7 @@ class Kullanicilar {
         userName: json[KullaniciAlanlar.userName] as String,
         password: json[KullaniciAlanlar.password] as String, // Yeni şifre alanı
         fotoUrl: json[KullaniciAlanlar.fotoUrl] as String,
+        guvenlikKodu: json[KullaniciAlanlar.guvenlikKodu] as String,
       );
 
   Map<String, Object?> toJson() => {
@@ -84,6 +91,7 @@ class Kullanicilar {
         KullaniciAlanlar.userName: userName,
         KullaniciAlanlar.password: password,
         KullaniciAlanlar.fotoUrl: fotoUrl,
+        KullaniciAlanlar.guvenlikKodu: guvenlikKodu,
       };
 
   static Kullanicilar fromMap(Map<String, dynamic> map) {
@@ -96,6 +104,7 @@ class Kullanicilar {
       userName: map[KullaniciAlanlar.userName],
       password: map[KullaniciAlanlar.password],
       fotoUrl: map[KullaniciAlanlar.fotoUrl],
+      guvenlikKodu: map[KullaniciAlanlar.guvenlikKodu] ?? '123456',
     );
   }
 
@@ -109,6 +118,7 @@ class Kullanicilar {
       KullaniciAlanlar.userName: userName,
       KullaniciAlanlar.password: password,
       KullaniciAlanlar.fotoUrl: fotoUrl,
+      KullaniciAlanlar.guvenlikKodu: guvenlikKodu,
     };
   }
 }

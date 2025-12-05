@@ -8,7 +8,7 @@ import '../models/not_model.dart';
 
 // Repositories
 import '../../domain/repositories/not_repository.dart';
-import '../../../kategori/domain/repositories/kategori_repository.dart';
+import '../../../kategoriler/domain/repositories/kategori_repository.dart';
 import '../../../oncelik/domain/repositories/oncelik_repository.dart';
 
 // ✅ Base Impl Importu (Standart işler buradan gelecek)

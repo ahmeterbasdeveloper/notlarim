@@ -18,6 +18,14 @@ class DurumRepositoryImpl extends BaseRepositoryImpl<Durum>
           (json) => DurumModel.fromJson(json), // Dönüştürücü fonksiyon
         );
 
-  // ❌ createDurum, updateDurum vb. tüm metodları SİLİN.
-  // BaseRepositoryImpl hepsini hallediyor.
+  @override
+  Future<List<Durum>> searchDurumlar(String query) async {
+    final database = await db;
+    final result = await database.query(
+      tableName,
+      where: '${DurumAlanlar.baslik} LIKE ? OR ${DurumAlanlar.aciklama} LIKE ?',
+      whereArgs: ['%$query%', '%$query%'],
+    );
+    return result.map((json) => fromMap(json)).toList();
+  }
 }

@@ -6,92 +6,126 @@ class KullanimKilavuzuWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Localization nesnesini değişkene atıyoruz
+    final loc = AppLocalizations.of(context);
+
     return AlertDialog(
-      title: Text(AppLocalizations.of(context).translate('userGuide')),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TopLevelExpansionTile(
-              title: AppLocalizations.of(context).translate('kilavuz_leftMenu'),
-              children: [
-                SubLevelExpansionTile(
-                  title: AppLocalizations.of(context)
-                      .translate('kilavuz_situations'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_situationsContent'),
-                ),
-                SubLevelExpansionTile(
-                  title: AppLocalizations.of(context)
-                      .translate('kilavuz_categories'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_categoriesContent'),
-                ),
-                SubLevelExpansionTile(
-                  title: AppLocalizations.of(context)
-                      .translate('kilavuz_priorities'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_prioritiesContent'),
-                ),
-                SubLevelExpansionTile(
-                  title:
-                      AppLocalizations.of(context).translate('kilavuz_notes'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_notesContent'),
-                ),
-              ],
-            ),
-            TopLevelExpansionTile(
-              title:
-                  AppLocalizations.of(context).translate('kilavuz_rightMenu'),
-              children: [
-                SubLevelExpansionTile(
-                  title: AppLocalizations.of(context)
-                      .translate('database_getBackup'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_getBackupContent'),
-                ),
-                SubLevelExpansionTile(
-                  title: AppLocalizations.of(context)
-                      .translate('database_restoreBackup'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_restoreBackupContent'),
-                ),
-                SubLevelExpansionTile(
-                  title: AppLocalizations.of(context)
-                      .translate('kilavuz_versionInformation'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_versionInformationContent'),
-                ),
-                SubLevelExpansionTile(
-                  title: AppLocalizations.of(context)
-                      .translate('kilavuz_abouttheProgram'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_abouttheProgramContent'),
-                ),
-                SubLevelExpansionTile(
-                  title: AppLocalizations.of(context)
-                      .translate('kilavuz_userGuide'),
-                  content: AppLocalizations.of(context)
-                      .translate('kilavuz_userGuideContent'),
-                ),
-              ],
-            ),
-          ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          const Icon(Icons.menu_book_outlined, color: Colors.indigo),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Text(loc.translate('userGuide') ?? 'Kullanım Kılavuzu')),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- SOL MENÜ ---
+              TopLevelExpansionTile(
+                title: loc.translate('kilavuz_leftMenu') ?? 'Sol Menü',
+                children: [
+                  SubLevelExpansionTile(
+                    title: loc.translate('kilavuz_situations'),
+                    content: loc.translate('kilavuz_situationsContent'),
+                  ),
+                  SubLevelExpansionTile(
+                    title: loc.translate('kilavuz_categories'),
+                    content: loc.translate('kilavuz_categoriesContent'),
+                  ),
+                  SubLevelExpansionTile(
+                    title: loc.translate('kilavuz_priorities'),
+                    content: loc.translate('kilavuz_prioritiesContent'),
+                  ),
+                  SubLevelExpansionTile(
+                    title: loc.translate('kilavuz_notes'),
+                    content: loc.translate('kilavuz_notesContent'),
+                  ),
+                  // ✅ EKLENEN: Kontrol Listeleri
+                  SubLevelExpansionTile(
+                    title: loc.translate('menu_checklists'),
+                    content: loc.translate('kilavuz_checklistsContent'),
+                  ),
+                  // ✅ EKLENEN: Hatırlatıcı
+                  SubLevelExpansionTile(
+                    title: loc.translate('general_reminder'),
+                    content: loc.translate('kilavuz_reminderContent'),
+                  ),
+                  const Divider(), // Ayıraç
+                  // ✅ EKLENEN: Güvenlik Kodunu Değiştir
+                  SubLevelExpansionTile(
+                    title: loc.translate('menu_changeSecurityCode'),
+                    content: loc.translate('kilavuz_changeSecurityCodeContent'),
+                  ),
+                  // ✅ EKLENEN: Şifre Değiştir
+                  SubLevelExpansionTile(
+                    title: loc.translate('menu_changePassword'),
+                    content: loc.translate('kilavuz_changePasswordContent'),
+                  ),
+                  // ✅ EKLENEN: Çıkış Yap
+                  SubLevelExpansionTile(
+                    title: loc.translate('menu_logout'),
+                    content: loc.translate('kilavuz_logoutContent'),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10), // Gruplar arası boşluk
+
+              // --- SAĞ MENÜ ---
+              TopLevelExpansionTile(
+                title: loc.translate('kilavuz_rightMenu') ?? 'Sağ Menü',
+                children: [
+                  SubLevelExpansionTile(
+                    title: loc.translate('database_getBackup'),
+                    content: loc.translate('kilavuz_getBackupContent'),
+                  ),
+                  SubLevelExpansionTile(
+                    title: loc.translate('database_restoreBackup'),
+                    content: loc.translate('kilavuz_restoreBackupContent'),
+                  ),
+                  // ✅ EKLENEN: Yedekleri Yönet
+                  SubLevelExpansionTile(
+                    title: loc.translate('database_manageBackups'),
+                    content: loc.translate('kilavuz_manageBackupsContent'),
+                  ),
+                  const Divider(),
+                  SubLevelExpansionTile(
+                    title: loc.translate('kilavuz_versionInformation'),
+                    content: loc.translate('kilavuz_versionInformationContent'),
+                  ),
+                  SubLevelExpansionTile(
+                    title: loc.translate('kilavuz_abouttheProgram'),
+                    content: loc.translate('kilavuz_abouttheProgramContent'),
+                  ),
+                  SubLevelExpansionTile(
+                    title: loc.translate('kilavuz_userGuide'),
+                    content: loc.translate('kilavuz_userGuideContent'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       actions: <Widget>[
         TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text(AppLocalizations.of(context).translate('general_ok')),
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            loc.translate('general_ok') ?? 'Tamam',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ),
       ],
     );
   }
 }
 
+// --- ÜST SEVİYE MENÜ ELEMANI ---
 class TopLevelExpansionTile extends StatefulWidget {
   final String title;
   final List<Widget> children;
@@ -103,7 +137,7 @@ class TopLevelExpansionTile extends StatefulWidget {
   });
 
   @override
-  _TopLevelExpansionTileState createState() => _TopLevelExpansionTileState();
+  State<TopLevelExpansionTile> createState() => _TopLevelExpansionTileState();
 }
 
 class _TopLevelExpansionTileState extends State<TopLevelExpansionTile> {
@@ -111,23 +145,36 @@ class _TopLevelExpansionTileState extends State<TopLevelExpansionTile> {
 
   @override
   Widget build(BuildContext context) {
-    return ExpansionTile(
-      title: Text(widget.title),
-      trailing: Icon(
-          isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right),
-      onExpansionChanged: (bool expanded) {
-        setState(() {
-          isExpanded = expanded;
-        });
-      },
-      children: widget.children,
+    return Card(
+      elevation: 0,
+      color: Colors.grey.shade100,
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: ExpansionTile(
+        title: Text(
+          widget.title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        shape: const Border(),
+        collapsedShape: const Border(),
+        trailing: Icon(
+          isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+          color: Colors.indigo,
+        ),
+        onExpansionChanged: (bool expanded) {
+          setState(() => isExpanded = expanded);
+        },
+        childrenPadding: const EdgeInsets.only(left: 10, bottom: 10, right: 10),
+        children: widget.children,
+      ),
     );
   }
 }
 
+// --- ALT SEVİYE MENÜ ELEMANI ---
 class SubLevelExpansionTile extends StatefulWidget {
-  final String title;
-  final String content;
+  final String? title;
+  final String? content;
 
   const SubLevelExpansionTile({
     required this.title,
@@ -136,7 +183,7 @@ class SubLevelExpansionTile extends StatefulWidget {
   });
 
   @override
-  _SubLevelExpansionTileState createState() => _SubLevelExpansionTileState();
+  State<SubLevelExpansionTile> createState() => _SubLevelExpansionTileState();
 }
 
 class _SubLevelExpansionTileState extends State<SubLevelExpansionTile> {
@@ -144,19 +191,41 @@ class _SubLevelExpansionTileState extends State<SubLevelExpansionTile> {
 
   @override
   Widget build(BuildContext context) {
-    return ExpansionTile(
-      title: Text(widget.title),
-      trailing: Icon(isExpanded ? Icons.remove : Icons.add),
-      onExpansionChanged: (bool expanded) {
-        setState(() {
-          isExpanded = expanded;
-        });
-      },
-      children: [
-        ListTile(
-          title: Text(widget.content),
+    if (widget.title == null) return const SizedBox.shrink();
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        title: Text(
+          widget.title!,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
-      ],
+        shape: const Border(),
+        collapsedShape: const Border(),
+        trailing: Icon(
+          isExpanded ? Icons.remove_circle_outline : Icons.add_circle_outline,
+          size: 20,
+          color: isExpanded ? Colors.redAccent : Colors.green,
+        ),
+        onExpansionChanged: (bool expanded) {
+          setState(() => isExpanded = expanded);
+        },
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Text(
+              widget.content ?? 'İçerik bulunamadı.',
+              style: const TextStyle(
+                  fontSize: 14, height: 1.4, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

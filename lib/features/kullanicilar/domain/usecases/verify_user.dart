@@ -5,7 +5,8 @@ class VerifyUser {
 
   VerifyUser(this.repository);
 
-  Future<bool> call(String userName, String email) async {
-    return await repository.verifyUser(userName, email);
+  // Parametre adı değişti: email -> securityCode
+  Future<bool> call(String userName, String securityCode) async {
+    return await repository.verifyUser(userName, securityCode);
   }
 }

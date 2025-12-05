@@ -17,8 +17,6 @@ class KontrolListeRepositoryImpl extends BaseRepositoryImpl<KontrolListe>
           (json) => KontrolListeModel.fromJson(json), // Dönüştürücü
         );
 
-  // ❌ create, update, delete vb. standart metodları SİLİN.
-
   // 👇 SADECE ÖZEL SORGULAR:
   @override
   Future<List<KontrolListe>> getByDurum(int durumId) async {
@@ -27,6 +25,18 @@ class KontrolListeRepositoryImpl extends BaseRepositoryImpl<KontrolListe>
       tableName,
       where: '${KontrolListeAlanlar.durumId} = ?',
       whereArgs: [durumId],
+    );
+    return result.map((json) => fromMap(json)).toList();
+  }
+
+  @override
+  Future<List<KontrolListe>> searchKontrolListesi(String query) async {
+    final database = await db;
+    final result = await database.query(
+      tableName,
+      where:
+          '${KontrolListeAlanlar.baslik} LIKE ? OR ${KontrolListeAlanlar.aciklama} LIKE ?',
+      whereArgs: ['%$query%', '%$query%'],
     );
     return result.map((json) => fromMap(json)).toList();
   }

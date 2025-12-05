@@ -1,5 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:notlarim/core/localization/localization.dart';
 
@@ -23,38 +25,64 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  // Arama metnini tutan değişken
-  String _searchQuery = "";
+  // ✅ 1. ScrollController
+  final ScrollController _scrollController = ScrollController();
+
+  // ❌ _searchQuery değişkenini kaldırdık
 
   @override
   void initState() {
     super.initState();
+    Timer? _debounce;
     // Sayfa açıldığında verileri yükle
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(kontrolListeNotifierProvider.notifier).loadKontrolListeleri();
     });
+
+    // ✅ 2. Arama Dinleyicisi
+    _searchController.addListener(() {
+      if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        final query = _searchController.text;
+        if (query.isEmpty) {
+          ref
+              .read(kontrolListeNotifierProvider.notifier)
+              .loadKontrolListeleri();
+        } else {
+          ref.read(kontrolListeNotifierProvider.notifier).searchFromDb(query);
+        }
+      });
+    });
+
+    // ✅ 3. Scroll Listener
+    _scrollController.addListener(_onScroll);
+  }
+
+  // ✅ Scroll Mantığı
+  void _onScroll() {
+    if (_searchController.text.isNotEmpty) {
+      FocusScope.of(context).unfocus();
+      return;
+    }
+
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref
+          .read(kontrolListeNotifierProvider.notifier)
+          .loadKontrolListeleri(isLoadMore: true);
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  /// 🇹🇷 Türkçe karakterleri İngilizce karakterlere çeviren yardımcı fonksiyon
-  String _replaceTurkishChars(String input) {
-    if (input.isEmpty) return "";
-    return input
-        .toLowerCase()
-        .replaceAll('ğ', 'g')
-        .replaceAll('ü', 'u')
-        .replaceAll('ş', 's')
-        .replaceAll('ı', 'i')
-        .replaceAll('i', 'i')
-        .replaceAll('ö', 'o')
-        .replaceAll('ç', 'c');
-  }
+  // ❌ _replaceTurkishChars fonksiyonunu kaldırdık
 
   @override
   Widget build(BuildContext context) {
@@ -63,34 +91,24 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
     // ✅ STATE DİNLEME
     final state = ref.watch(kontrolListeNotifierProvider);
 
-    // 🔎 GELİŞMİŞ FİLTRELEME MANTIĞI
-    final filteredList = state.kontrolListeleri.where((liste) {
-      if (_searchQuery.isEmpty) return true;
-
-      final searchLower = _replaceTurkishChars(_searchQuery.trim());
-      final baslikLower = _replaceTurkishChars(liste.baslik);
-      final aciklamaLower = _replaceTurkishChars(liste.aciklama);
-
-      return baslikLower.contains(searchLower) ||
-          aciklamaLower.contains(searchLower);
-    }).toList();
+    // ❌ filteredList mantığını kaldırdık. state.kontrolListeleri'ni kullanıyoruz.
 
     return Scaffold(
-      // Modern arka plan rengi
       backgroundColor: const Color(0xFFF5F7FA),
       resizeToAvoidBottomInset: false,
 
       body: RefreshIndicator(
         onRefresh: () async {
+          _searchController.clear();
           await ref
               .read(kontrolListeNotifierProvider.notifier)
               .loadKontrolListeleri();
         },
-        // ✅ CustomScrollView ile Modern Yapı
         child: CustomScrollView(
+          controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // 1. HEADER (SliverAppBar)
+            // 1. HEADER
             SliverAppBar(
               backgroundColor: Colors.green.shade900,
               title: Text(
@@ -116,14 +134,15 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
               ),
             ),
 
-            // 3. LİSTE VEYA BOŞ DURUM
-            if (state.isLoading)
+            // 3. LİSTE DURUMLARI
+            if (state.isLoading && state.kontrolListeleri.isEmpty)
               const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (filteredList.isEmpty)
+            else if (state.kontrolListeleri.isEmpty && !state.isLoading)
               SliverFillRemaining(
-                child: _buildEmptyState(local, _searchQuery.isNotEmpty),
+                child:
+                    _buildEmptyState(local, _searchController.text.isNotEmpty),
               )
             else
               // 4. GRID YAPISI
@@ -134,19 +153,18 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childCount: filteredList.length,
+                  childCount: state.kontrolListeleri.length,
                   itemBuilder: (context, index) {
-                    final kontrolListe = filteredList[index];
+                    final kontrolListe = state.kontrolListeleri[index];
                     return GestureDetector(
                       onTap: () async {
-                        _searchFocusNode.unfocus(); // Klavyeyi kapat
+                        _searchFocusNode.unfocus();
                         await Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => KontrolListeDetail(
                                 kontrolListeId: kontrolListe.id!),
                           ),
                         );
-                        // Detaydan dönünce listeyi güncelle
                         ref
                             .read(kontrolListeNotifierProvider.notifier)
                             .loadKontrolListeleri();
@@ -157,13 +175,21 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
                 ),
               ),
 
-            // Alt boşluk (FAB için)
+            // 5. YÜKLENİYOR İKONU
+            if (state.isLoading && state.kontrolListeleri.isNotEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
           ],
         ),
       ),
 
-      // ✅ FAB BUTTON (Modern Görünüm)
+      // FAB BUTTON
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'kontrol_listesi_fab',
         backgroundColor: const Color.fromARGB(255, 78, 18, 92),
@@ -179,7 +205,6 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
             MaterialPageRoute(
                 builder: (context) => const KontrolListeAddEdit()),
           );
-          // Ekleme sonrası listeyi güncelle
           ref
               .read(kontrolListeNotifierProvider.notifier)
               .loadKontrolListeleri();
@@ -188,7 +213,6 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
     );
   }
 
-  // ✨ Modern Arama Çubuğu
   Widget _buildModernSearchBar(AppLocalizations loc) {
     return Container(
       decoration: BoxDecoration(
@@ -205,14 +229,7 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocusNode,
-
-        // Anlık arama
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
-
+        // ❌ onChanged kaldırıldı
         decoration: InputDecoration(
           hintText: '${loc.translate('general_search')}...',
           hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -221,10 +238,7 @@ class _KontrolListeListesiState extends ConsumerState<KontrolListeListesi> {
               ? IconButton(
                   icon: const Icon(Icons.clear, color: Colors.grey),
                   onPressed: () {
-                    setState(() {
-                      _searchController.clear();
-                      _searchQuery = "";
-                    });
+                    _searchController.clear();
                   },
                 )
               : null,

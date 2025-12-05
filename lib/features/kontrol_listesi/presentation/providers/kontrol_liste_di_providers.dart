@@ -6,6 +6,7 @@ import '../../domain/entities/kontrol_liste.dart';
 import '../../domain/repositories/kontrol_liste_repository.dart';
 import '../../data/repositories/kontrol_liste_repository_impl.dart';
 import '../../domain/usecases/get_kontrol_liste_by_durum.dart';
+import '../../domain/usecases/search_kontrol_liste.dart';
 
 // REPOSITORY
 final kontrolListeRepositoryProvider = Provider<KontrolListeRepository>((ref) {
@@ -30,3 +31,6 @@ final getKontrolListeByIdProvider = Provider((ref) =>
 
 final getKontrolListeByDurumProvider = Provider(
     (ref) => GetKontrolListeByDurum(ref.watch(kontrolListeRepositoryProvider)));
+
+final searchKontrolListeProvider = Provider(
+    (ref) => SearchKontrolListe(ref.watch(kontrolListeRepositoryProvider)));

@@ -1,12 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ Riverpod
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:notlarim/features/durumlar/presentation/providers/durum_providers.dart';
 
 // Localization
 import '../../../../core/localization/localization.dart';
-
-// Provider
-import 'package:notlarim/features/durumlar/providers/durum_providers.dart';
 
 // UI
 import '../widgets/durum_card.dart';
@@ -24,38 +24,60 @@ class _DurumListesiState extends ConsumerState<DurumListesi> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  // Arama metnini tutan değişken
-  String _searchQuery = "";
+  // ✅ 1. ScrollController
+  final ScrollController _scrollController = ScrollController();
+
+  // ❌ _searchQuery değişkenini kaldırdık (Gerek kalmadı)
 
   @override
   void initState() {
     super.initState();
-    // Sayfa açıldığında verileri yükle
+    Timer? _debounce;
+    // İlk verileri yükle
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(durumNotifierProvider.notifier).loadDurumlar();
     });
+
+    // 🔍 Arama Dinleyicisi
+    _searchController.addListener(() {
+      if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+      _debounce = Timer(const Duration(milliseconds: 500), () {
+        final query = _searchController.text;
+        if (query.isEmpty) {
+          ref.read(durumNotifierProvider.notifier).loadDurumlar();
+        } else {
+          ref.read(durumNotifierProvider.notifier).searchFromDb(query);
+        }
+      });
+    });
+
+    // ✅ 2. Scroll Listener
+    _scrollController.addListener(_onScroll);
+  }
+
+  // ✅ Scroll Mantığı
+  void _onScroll() {
+    if (_searchController.text.isNotEmpty) {
+      FocusScope.of(context).unfocus();
+      return; // Arama yapılıyorsa pagination'ı durdurabiliriz
+    }
+
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(durumNotifierProvider.notifier).loadDurumlar(isLoadMore: true);
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  /// 🇹🇷 Türkçe karakterleri İngilizce karakterlere çeviren yardımcı fonksiyon
-  String _replaceTurkishChars(String input) {
-    if (input.isEmpty) return "";
-    return input
-        .toLowerCase()
-        .replaceAll('ğ', 'g')
-        .replaceAll('ü', 'u')
-        .replaceAll('ş', 's')
-        .replaceAll('ı', 'i')
-        .replaceAll('i', 'i')
-        .replaceAll('ö', 'o')
-        .replaceAll('ç', 'c');
-  }
+  // ❌ _replaceTurkishChars fonksiyonunu kaldırdık (Backend'de yapılıyor veya SQL like ile çözülüyor)
 
   @override
   Widget build(BuildContext context) {
@@ -64,32 +86,23 @@ class _DurumListesiState extends ConsumerState<DurumListesi> {
     // ✅ STATE DİNLEME
     final state = ref.watch(durumNotifierProvider);
 
-    // 🔎 GELİŞMİŞ FİLTRELEME MANTIĞI
-    final filteredList = state.durumlar.where((durum) {
-      if (_searchQuery.isEmpty) return true;
-
-      final searchLower = _replaceTurkishChars(_searchQuery.trim());
-      final baslikLower = _replaceTurkishChars(durum.baslik);
-      final aciklamaLower = _replaceTurkishChars(durum.aciklama);
-
-      return baslikLower.contains(searchLower) ||
-          aciklamaLower.contains(searchLower);
-    }).toList();
+    // ❌ filteredList mantığını tamamen kaldırdık.
+    // Artık doğrudan 'state.durumlar' kullanıyoruz.
 
     return Scaffold(
-      // Modern arka plan rengi
       backgroundColor: const Color(0xFFF5F7FA),
       resizeToAvoidBottomInset: false,
 
       body: RefreshIndicator(
         onRefresh: () async {
+          _searchController.clear();
           await ref.read(durumNotifierProvider.notifier).loadDurumlar();
         },
-        // ✅ CustomScrollView ile Modern Yapı
         child: CustomScrollView(
+          controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // 1. HEADER (SliverAppBar)
+            // 1. HEADER
             SliverAppBar(
               backgroundColor: Colors.green.shade900,
               title: Text(
@@ -115,14 +128,16 @@ class _DurumListesiState extends ConsumerState<DurumListesi> {
               ),
             ),
 
-            // 3. LİSTE VEYA BOŞ DURUM
-            if (state.isLoading)
+            // 3. LİSTE DURUMLARI
+            if (state.isLoading && state.durumlar.isEmpty)
               const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
               )
-            else if (filteredList.isEmpty)
+            // Filtreleme sonucu boşsa
+            else if (state.durumlar.isEmpty && !state.isLoading)
               SliverFillRemaining(
-                child: _buildEmptyState(local, _searchQuery.isNotEmpty),
+                child:
+                    _buildEmptyState(local, _searchController.text.isNotEmpty),
               )
             else
               // 4. GRID YAPISI
@@ -133,19 +148,19 @@ class _DurumListesiState extends ConsumerState<DurumListesi> {
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  childCount: filteredList.length,
+                  // Doğrudan state.durumlar kullanıyoruz
+                  childCount: state.durumlar.length,
                   itemBuilder: (context, index) {
-                    final durum = filteredList[index];
+                    final durum = state.durumlar[index];
                     return GestureDetector(
                       onTap: () async {
-                        _searchFocusNode.unfocus(); // Klavyeyi kapat
+                        _searchFocusNode.unfocus();
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => DurumDetail(durumId: durum.id!),
                           ),
                         );
-                        // Detaydan dönünce listeyi güncelle
                         ref.read(durumNotifierProvider.notifier).loadDurumlar();
                       },
                       child: DurumCard(durum: durum),
@@ -154,19 +169,25 @@ class _DurumListesiState extends ConsumerState<DurumListesi> {
                 ),
               ),
 
-            // Alt boşluk (FAB için)
+            // 5. YÜKLENİYOR İKONU
+            if (state.isLoading && state.durumlar.isNotEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
           ],
         ),
       ),
 
-      // ✅ FAB BUTTON (Düzeltildi)
+      // FAB BUTTON
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'durum_listesi_fab',
         backgroundColor: const Color.fromARGB(255, 78, 18, 92),
-        // İkon zaten '+' işaretini veriyor
         icon: const Icon(Icons.add, color: Colors.white),
-        // Label sadece metin olmalı ('Ekle')
         label: Text(
           local.translate('general_add') ?? 'Ekle',
           style:
@@ -178,14 +199,12 @@ class _DurumListesiState extends ConsumerState<DurumListesi> {
             context,
             MaterialPageRoute(builder: (_) => const AddEditDurum()),
           );
-          // Ekleme sonrası listeyi güncelle
           ref.read(durumNotifierProvider.notifier).loadDurumlar();
         },
       ),
     );
   }
 
-  // ✨ Modern Arama Çubuğu
   Widget _buildModernSearchBar(AppLocalizations loc) {
     return Container(
       decoration: BoxDecoration(
@@ -202,14 +221,7 @@ class _DurumListesiState extends ConsumerState<DurumListesi> {
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocusNode,
-
-        // Anlık arama
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
-
+        // ❌ onChanged kaldırıldı, listener hallediyor
         decoration: InputDecoration(
           hintText: '${loc.translate('general_search')}...',
           hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -218,10 +230,7 @@ class _DurumListesiState extends ConsumerState<DurumListesi> {
               ? IconButton(
                   icon: const Icon(Icons.clear, color: Colors.grey),
                   onPressed: () {
-                    setState(() {
-                      _searchController.clear();
-                      _searchQuery = "";
-                    });
+                    _searchController.clear();
                   },
                 )
               : null,
